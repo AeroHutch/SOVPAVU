@@ -1,10 +1,12 @@
 {
-  "en-NL": "bowalking.mp4",
-  "nl-NL": "bowalkingnl.mp4",
-  "es-419": "bowalkinges.mp4",
-  "de-DE": "bowalkingde.mp4",
-  "pt-BR": "bowalkingbr.mp4",
-  "af-ZA": "bowalkingaf.mp4",
-  "tr-TR": "bowalkingtr.mp4",
-  "ru-RU": "bowalkingru.mp4"
+  "automated_dubbing_targets": [
+    { "code": "en-NL", "name": "English (Netherlands)", "file": "bowalking.mp4", "automatic": false },
+    { "code": "nl-NL", "name": "Dutch (Netherlands)", "file": "bowalkingnl.mp4", "automatic": false },
+    { "code": "es-419", "name": "Spanish (Latin America)", "file": "bowalkinges.mp4", "automatic": false },
+    { "code": "de-DE", "name": "German (Germany)", "file": "bowalkingde.mp4", "automatic": false },
+    { "code": "pt-BR", "name": "Portuguese (Brazil)", "file": "bowalkingbr.mp4", "automatic": false },
+    { "code": "af-ZA", "name": "Afrikaans (South Africa)", "file": "bowalkingaf.mp4", "automatic": true },
+    { "code": "tr-TR", "name": "Turkish (Turkey)", "file": "bowalkingtr.mp4", "automatic": true },
+    { "code": "ru-RU", "name": "Russian (Russia)", "file": "bowalkingru.mp4", "automatic": true }
+  ]
 }
