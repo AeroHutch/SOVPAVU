@@ -1,5 +1,6 @@
 {
   "automated_dubbing_targets": [
+    { "code": "af-ZA", "name": "Afrikaans (South Africa)" },
     { "code": "es-419", "name": "Spanish (Latin America)" },
     { "code": "de-DE", "name": "German (Germany)" },
     { "code": "pt-BR", "name": "Portuguese (Brazil)" },
