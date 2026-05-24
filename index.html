@@ -55,6 +55,14 @@
                 <input type="text" id="primary-video-title" placeholder="Video Title" required>
             </div>
 
+            <div>
+                <label>4. Is this an Automatic AI Dub?</label>
+                <select id="primary-automatic-status">
+                    <option value="false">No (Manual / Original / Studio)</option>
+                    <option value="true">Yes (Automatic AI Dub)</option>
+                </select>
+            </div>
+
             <hr>
 
             <button type="submit" id="submit-btn">Submit Pull Request to GitHub</button>
@@ -82,16 +90,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const userLang = navigator.language.split('-')[0] || 'en'; 
 
     // --- 2. AUTOMATED VIDEO PLAYER RENDER ---
-    let tracksArray = []; // Stores the unified dubbing configurations array
+    let tracksArray = []; 
 
     if (videoId) {
         const videoJsonPath = `./videos/${videoId}/translations/video.json`;
 
         fetch(videoJsonPath)
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error("File fetch failed");
+                return res.json();
+            })
             .catch(() => ({}))
             .then(videoDataBody => {
-                // Reads the new custom ".dubbing" data array property
+                // Read from the unified ".dubbing" data array property
                 tracksArray = videoDataBody.dubbing || [];
 
                 if (tracksArray.length === 0) {
@@ -100,19 +111,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // Identify the Original language code by looking for filenames that don't mismatch their code
-                const originalTarget = tracksArray.find(item => {
-                    const filename = item.file.toLowerCase();
-                    const cleanLang = item.code.toLowerCase().replace('-', '');
-                    return !filename.includes(cleanLang);
-                }) || tracksArray[0];
+                // Identify the Original language code by scanning array entries
+                const originalTarget = tracksArray.find(item => !item.automatic) || tracksArray[0];
 
                 languageSelector.innerHTML = '';
 
                 const autoOptions = [];
                 const manualOptions = [];
 
-                // Separate configuration tracks based on the automatic tag boolean value
+                // Populate choices based on the automatic boolean flag
                 tracksArray.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.code;
@@ -130,10 +137,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Render Automatic Dubs group at the top
+                // Append Automatic options at the top
                 autoOptions.forEach(opt => languageSelector.appendChild(opt));
 
-                // Dropdown divider line injection block
+                // Clean divider injector line
                 if (autoOptions.length > 0 && manualOptions.length > 0) {
                     const divider = document.createElement('option');
                     divider.disabled = true;
@@ -141,10 +148,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     languageSelector.appendChild(divider);
                 }
 
-                // Render Manual Dubs group at the bottom
+                // Append Manual/Studio options at the bottom
                 manualOptions.forEach(opt => languageSelector.appendChild(opt));
 
-                // Position fallback default active track selection
+                // Fallback default selection active positioning
                 const codeList = tracksArray.map(t => t.code);
                 if (codeList.includes(userLang)) {
                     languageSelector.value = userLang;
@@ -158,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
         languageSelector.addEventListener('change', (e) => {
-            if (!e.target.value) return; // Guard clause to handle clicking the separator divider line
+            if (!e.target.value) return; // Prevent breakages when clicking the disabled divider line
             updatePlayer(e.target.value);
         });
 
@@ -229,6 +236,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryFile = document.getElementById('primary-video-file').files[0];
         const primaryLang = document.getElementById('primary-lang-tag').value.trim();
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
+        const isAutomatic = document.getElementById('primary-automatic-status').value === "true";
 
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
@@ -241,14 +249,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
-        // Generate the video.json file layout containing the newly structured dubbing entry map
+        // Generates the new clean array entry structure matching your format requirements
         let videoJson = {
             "dubbing": [
                 {
                     "code": primaryLang,
                     "name": primaryTitle,
                     "file": primaryFile.name,
-                    "automatic": false // Default upload configuration setting value
+                    "automatic": isAutomatic
                 }
             ]
         };
@@ -296,31 +304,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response;
             }
 
-            // 1. Upload the unified video.json (titles.json step has been completely deleted)
-            showStatus("Uploading tracking composition [1/2]: video.json...", "orange");
+            // 1. Upload unified structure to video.json (Zero calls to obsolete titles.json)
+            showStatus("Uploading structure [1/2]: video.json...", "orange");
             const videoJsonStr = JSON.stringify(videoJson, null, 2);
             const videoJsonBase64 = btoa(encodeURIComponent(videoJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
-            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Add integrated dubbing entry dataset for ${customBase64Id}`);
-            if (!res1.ok) throw new Error(`Failed to write video tracking metadata structure.`);
+            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Create structured dubbing description for ${customBase64Id}`);
+            if (!res1.ok) throw new Error(`Failed to write video file configurations.`);
 
-            // 2. Process and upload the raw binary MP4 file asset itself!
-            showStatus("Processing large file binary data streams [2/2]...", "orange");
+            // 2. Stream the asset media
+            showStatus("Processing data file binary media asset streams [2/2]...", "orange");
             const rawFileBase64 = await readFileAsBase64(primaryFile);
             
             showStatus(`Uploading raw video asset file: ${primaryFile.name}...`, "orange");
-            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload raw video asset file for entry ${customBase64Id}`);
-            if (!res3.ok) throw new Error(`Failed to upload MP4 video asset file.`);
+            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload raw video media asset file for entry ${customBase64Id}`);
+            if (!res3.ok) throw new Error(`Failed to upload MP4 video file asset.`);
 
-            // 3. Open the Pull Request
+            // 3. Open Pull Request sequence
             showStatus("Opening Pull Request sequence...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
                 method: "POST",
                 headers: githubHeaders,
                 body: JSON.stringify({
-                    title: `New Video Metadata Entry [ID: ${customBase64Id}]`,
+                    title: `New Unified Video Entry [ID: ${customBase64Id}]`,
                     head: cleanBranchName,
                     base: defaultBranch,
-                    body: `Automated upload workflow configuration completed for entry ID \`${customBase64Id}\`.\n\n**Included Elements:**\n- \`translations/video.json\` (Containing embedded language, file, title data)\n- \`${primaryFile.name}\` (Raw Video Asset File)`
+                    body: `Automated upload setup finalized for entry ID \`${customBase64Id}\` using unified single-file JSON composition formatting.`
                 })
             });
 
