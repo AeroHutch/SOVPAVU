@@ -207,6 +207,19 @@ document.addEventListener("DOMContentLoaded", () => {
         tokenInput.value = localStorage.getItem('saved_github_token');
     }
 
+    // Helper utility to read a file from the disk and convert it into a pure Base64 string payload
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64String = reader.result.split(',')[1];
+                resolve(base64String);
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        });
+    }
+
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -265,21 +278,14 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API. Verify 'Contents: Read/Write' token scopes.");
 
-            // Helper to write files sequentially
-            async function commitToBranch(path, jsonContent) {
+            // Core repository commit payload sender
+            async function commitRawPayloadToBranch(path, base64Payload, commitMsg) {
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-                const jsonString = JSON.stringify(jsonContent, null, 2);
-                
-                // Safe UTF-8 Base64 translation helper
-                const base64Payload = btoa(encodeURIComponent(jsonString).replace(/%([0-9A-F]{2})/g, function(match, p1) {
-                    return String.fromCharCode('0x' + p1);
-                }));
-                
                 const response = await fetch(url, {
                     method: "PUT",
                     headers: githubHeaders,
                     body: JSON.stringify({
-                        message: `Add metadata configuration entry: ${customBase64Id}`,
+                        message: commitMsg,
                         content: base64Payload,
                         branch: cleanBranchName
                     })
@@ -287,15 +293,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 return response;
             }
 
-            // FIXED: Switched from parallel Promise.all to sequential execution to stop workspace tree conflicts
-            showStatus("Uploading configuration array [1/2]: video.json...", "orange");
-            const res1 = await commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJson);
+            // 1. Write the video.json file
+            showStatus("Uploading configuration array [1/3]: video.json...", "orange");
+            const videoJsonStr = JSON.stringify(videoJson, null, 2);
+            const videoJsonBase64 = btoa(encodeURIComponent(videoJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Add video registry for entry ${customBase64Id}`);
             if (!res1.ok) throw new Error(`Failed to write video configuration array (Status: ${res1.status})`);
 
-            showStatus("Uploading configuration array [2/2]: title.json...", "orange");
-            const res2 = await commitToBranch(`videos/${customBase64Id}/translations/title.json`, titleJson);
+            // 2. Write the title.json file
+            showStatus("Uploading configuration array [2/3]: title.json...", "orange");
+            const titleJsonStr = JSON.stringify(titleJson, null, 2);
+            const titleJsonBase64 = btoa(encodeURIComponent(titleJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+            const res2 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/title.json`, titleJsonBase64, `Add title localization entry for ${customBase64Id}`);
             if (!res2.ok) throw new Error(`Failed to write title configuration array (Status: ${res2.status})`);
 
+            // 3. Process and upload the raw binary MP4 file asset itself!
+            showStatus("Processing large file binary data streams [3/3]...", "orange");
+            const rawFileBase64 = await readFileAsBase64(primaryFile);
+            
+            showStatus(`Uploading raw video asset file: ${primaryFile.name} (This may take a minute)...`, "orange");
+            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload raw video media file asset for entry ${customBase64Id}`);
+            if (!res3.ok) throw new Error(`Failed to upload MP4 video file asset to branch. Note: direct web uploads fail if size exceeds 25MB. (Status: ${res3.status})`);
+
+            // 4. Open the Pull Request
             showStatus("Opening Pull Request sequence...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
                 method: "POST",
@@ -304,13 +324,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     title: `New Video Metadata Entry [ID: ${customBase64Id}]`,
                     head: cleanBranchName,
                     base: defaultBranch,
-                    body: `Automated upload setup initialized for entry ID \`${customBase64Id}\`.\n\n**Next Steps:** Drop your video file \`${primaryFile.name}\` into the \`videos/${customBase64Id}/\` directory inside the files tab before merging this Pull Request.`
+                    body: `Automated complete workflow upload setup completed for entry ID \`${customBase64Id}\`.\n\n**Included Elements:**\n- \`translations/video.json\`\n- \`translations/title.json\`\n- \`${primaryFile.name}\` (Raw Video Asset File)\n\nEverything has been pre-packaged automatically from the UI client.`
                 })
             });
 
             if (prRes.ok) {
                 const prData = await prRes.json();
-                showStatus(`SUCCESS! Pull Request opened.<br><br><strong>Pull Request Link:</strong><br><a href="${prData.html_url}" target="_blank">${prData.html_url}</a><br><br><em>Action Needed: Open your PR, navigate to the Files tab, drop your video files under the folder \`videos/${customBase64Id}/\`, and merge!</em>`, "green");
+                showStatus(`SUCCESS! Video and configurations have been uploaded successfully!<br><br><strong>Pull Request Link:</strong><br><a href="${prData.html_url}" target="_blank">${prData.html_url}</a><br><br><em>Action Needed: Just click the link above and merge the Pull Request! GitHub Pages will handle the rest.</em>`, "green");
                 
                 document.getElementById('primary-video-file').value = '';
                 document.getElementById('primary-lang-tag').value = '';
@@ -318,7 +338,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 submitBtn.disabled = false;
             } else {
                 const errData = await prRes.json().catch(() => ({}));
-                throw new Error(errData.message || "Pull Request generation rejected. Verify 'Pull requests: Read/Write' token scopes.");
+                throw new Error(errData.message || "Pull Request generation rejected. Verify 'Pull requests: Read/Write' token token scopes.");
             }
 
         } catch (err) {
