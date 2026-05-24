@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Get the Video ID from the top URL parameter (e.g., index.html?id=myVideo123)
+    // 1. Grab Video ID from URL parameter (?id=...)
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
@@ -12,14 +12,20 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Paths to your JSON translation files inside the /videos folder
+    // Determine user's local browser language context
+    const userLang = navigator.language.split('-')[0] || 'en'; 
+
+    // Built-in browser tool to change 'de' -> 'Deutsch' or 'German' automatically based on userLang
+    const langNamesTranslator = new Intl.DisplayNames([userLang], { type: 'language' });
+
+    // Paths inside your hosted GitHub repository tree
     const titleJsonPath = `./videos/${videoId}/translations/title.json`;
     const videoJsonPath = `./videos/${videoId}/translations/video.json`;
 
     let titlesData = {};
     let videosData = {};
 
-    // 2. Fetch the JSON data to know which languages are available
+    // 2. Fetch the JSON translation configurations over HTTP/HTTPS safely
     Promise.all([
         fetch(titleJsonPath).then(res => res.json()).catch(() => ({})),
         fetch(videoJsonPath).then(res => res.json()).catch(() => ({}))
@@ -27,7 +33,6 @@ document.addEventListener("DOMContentLoaded", () => {
         titlesData = titles;
         videosData = videos;
 
-        // Find all unique language keys available (e.g., "en", "es", "fr")
         const availableLangs = Object.keys({ ...titlesData, ...videosData });
 
         if (availableLangs.length === 0) {
@@ -36,44 +41,45 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Populate your HTML language dropdown menu
+        // 3. Construct dropdown with full names
         languageSelector.innerHTML = '';
         availableLangs.forEach(lang => {
             const option = document.createElement('option');
             option.value = lang;
-            option.textContent = lang.toUpperCase();
+
+            try {
+                option.textContent = langNamesTranslator.of(lang);
+            } catch (e) {
+                option.textContent = lang.toUpperCase(); // Fallback if conversion hits an edge case
+            }
+
             languageSelector.appendChild(option);
         });
 
-        // Detect user's default browser language, fallback to the first available if not found
-        const defaultLang = navigator.language.split('-')[0];
-        if (availableLangs.includes(defaultLang)) {
-            languageSelector.value = defaultLang;
+        // Default to user's browser language if it matches an option, else default to the first array index
+        if (availableLangs.includes(userLang)) {
+            languageSelector.value = userLang;
         } else {
             languageSelector.value = availableLangs[0];
         }
 
-        // Load the initial video and title
         updatePlayer(languageSelector.value);
     });
 
-    // 3. Listen for dropdown changes to swap the video, inner title, and top bar title
+    // 4. Listen for user language alterations
     languageSelector.addEventListener('change', (e) => {
         updatePlayer(e.target.value);
     });
 
-    // 4. Function that updates everything based on the selected language
+    // 5. Build dynamic player and inject into iframe srcdoc
     function updatePlayer(lang) {
         const currentTitle = titlesData[lang] || `Video: ${videoId}`;
         const currentVideoFile = videosData[lang] || 'default.mp4';
-        
-        // This is the absolute path to the video file from the project root
         const fullVideoPath = `./videos/${videoId}/${currentVideoFile}`;
 
-        // UPDATE TOP BAR: Changes the actual browser tab title
+        // Sync main window browser tab string
         document.title = currentTitle;
 
-        // Generate the player HTML document to feed into the iframe srcdoc
         const iframeHTML = `
             <!DOCTYPE html>
             <html>
@@ -93,7 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
             </html>
         `;
 
-        // Inject the player document into your iframe
         videoFrame.srcdoc = iframeHTML;
     }
 });
