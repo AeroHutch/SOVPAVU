@@ -1,4 +1,12 @@
 {
-  "Archi-RU": "Screen recording 2026-05-24 14.55.00.webm",
-  "en-NL": "DagestanEN.mp4"
+  "dubbing": [
+    { "code": "Archi-RU", "name": "Screen recording 2026-05-24 14.55.00.webm", "file": "bowalking.mp4", "automatic": false },
+    { "code": "en-NL", "name": "Wandelen met Bo, deel 2", "file": "DagestanEN.mp4", "automatic": true },
+    { "code": "es-419", "name": "Caminando con Bo, parte 2", "file": "bowalkinges.mp4", "automatic": false },
+    { "code": "de-DE", "name": "Spaziergang mit Bo, Teil 2", "file": "bowalkingde.mp4", "automatic": false },
+    { "code": "pt-BR", "name": "Caminhando com Bo, parte 2", "file": "bowalkingbr.mp4", "automatic": false },
+    { "code": "af-ZA", "name": "Stap saam met Bo, deel 2", "file": "bowalkingaf.mp4", "automatic": true },
+    { "code": "tr-TR", "name": "Bo ile Yürüyüş, Bölüm 2", "file": "bowalkingtr.mp4", "automatic": true },
+    { "code": "ru-RU", "name": "Прогулка с Бо, часть 2", "file": "bowalkingru.mp4", "automatic": true }
+  ]
 }
