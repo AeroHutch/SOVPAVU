@@ -10,8 +10,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const uploadModal = document.getElementById('upload-modal');
     const closeModal = document.getElementById('close-modal');
     const uploadForm = document.getElementById('upload-form');
-    const addTranslationBtn = document.getElementById('add-translation-btn');
-    const translationsContainer = document.getElementById('translations-container');
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submit-btn');
 
@@ -139,17 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
     closeModal.addEventListener('click', () => uploadModal.style.display = 'none');
     window.addEventListener('click', (e) => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
-    addTranslationBtn.addEventListener('click', () => {
-        const row = document.createElement('div');
-        row.className = 'translation-row';
-        row.innerHTML = `
-            <input type="text" placeholder="Tag (e.g. de)" class="trans-lang" style="width:25%; padding: 6px;" required>
-            <input type="text" placeholder="Translated Title" class="trans-title" style="width:45%; padding: 6px;" required>
-            <input type="text" placeholder="Filename (e.g. video_de.mp4)" class="trans-file" style="width:30%; padding: 6px;" required>
-        `;
-        translationsContainer.appendChild(row);
-    });
-
     // --- 4. GITHUB REPOSITORY DIRECT WRITER ---
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -186,17 +173,6 @@ document.addEventListener("DOMContentLoaded", () => {
         videoJson[primaryLang] = primaryFile.name;
         titleJson[primaryLang] = primaryTitle;
 
-        const dynamicRows = document.querySelectorAll('.translation-row');
-        dynamicRows.forEach(row => {
-            const extraLang = row.querySelector('.trans-lang').value.trim();
-            const extraTitle = row.querySelector('.trans-title').value.trim();
-            const extraFile = row.querySelector('.trans-file').value.trim();
-            if (extraLang) {
-                videoJson[extraLang] = extraFile;
-                titleJson[extraLang] = extraTitle;
-            }
-        });
-
         // Communication channel helper transforming content and putting files directly onto GitHub branch trees
         async function commitToGitHub(path, jsonContent) {
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
@@ -229,7 +205,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const finalShareUrl = `${window.location.origin}/${repo}/index.html?id=${customBase64Id}`;
                 showStatus(`SUCCESS! Metadata committed to repository branch paths.<br><br><strong>Shareable URL Link:</strong><br><a href="${finalShareUrl}" target="_blank">${finalShareUrl}</a><br><br><em>Action Required: Open your repo and place the actual raw mp4 video files directly inside the new path: videos/${customBase64Id}/</em>`, "green");
                 uploadForm.reset();
-                translationsContainer.innerHTML = '';
             } else {
                 const errData = await res1.json().catch(() => ({}));
                 showStatus(`GitHub API communication error: ${errData.message || 'Verify token configurations.'}`, "red");
@@ -244,8 +219,5 @@ document.addEventListener("DOMContentLoaded", () => {
     function showStatus(msg, color) {
         statusDiv.style.display = "block";
         statusDiv.innerHTML = msg;
-        if (color === "green") { statusDiv.style.background = "#d4edda"; statusDiv.style.color = "#155724"; }
-        if (color === "orange") { statusDiv.style.background = "#fff3cd"; statusDiv.style.color = "#856404"; }
-        if (color === "red") { statusDiv.style.background = "#f8d7da"; statusDiv.style.color = "#721c24"; }
     }
 });
