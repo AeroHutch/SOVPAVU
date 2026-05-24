@@ -116,7 +116,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     const option = document.createElement('option');
                     option.value = item.code;
 
-                    let displayLabel = item.name;
+                    // --- Dynamic Native Locale Translation ---
+                    let displayLabel = item.code;
+                    try {
+                        // Translates the code into its native tongue (e.g., "nl-NL" -> "Nederlands (Nederland)")
+                        const displayNameFormatter = new Intl.DisplayNames([item.code], { type: 'language' });
+                        displayLabel = displayNameFormatter.of(item.code);
+                        // Capitalize first letter
+                        displayLabel = displayLabel.charAt(0).toUpperCase() + displayLabel.slice(1);
+                    } catch (e) {
+                        // Fallback to the title string if Intl isn't behaving
+                        displayLabel = item.name;
+                    }
+
                     if (item.code === originalTarget.code) {
                         displayLabel += ' (Original)';
                     }
@@ -215,14 +227,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryFile = document.getElementById('primary-video-file').files[0];
         const primaryLang = document.getElementById('primary-lang-tag').value.trim();
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
-        const isAutomatic = document.getElementById('primary-automatic-status').value === "true";
+        
+        // Note: Ensured this fallback safely catches if element exists or defaults to false
+        const autoEl = document.getElementById('primary-automatic-status');
+        const isAutomatic = autoEl ? autoEl.value === "true" : false;
 
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
 
         let randomNumericString = '';
         for (let i = 0; i < 8; i++) randomNumericString += Math.floor(Math.random() * 10);
-                const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
+        const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
         const videoJson = {
@@ -280,17 +295,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 return res;
             }
 
-            // 1. Upload video.json
             showStatus("Uploading video.json...", "orange");
             const videoJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(videoJson, null, 2))));
             await commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Create video configuration for ${customBase64Id}`);
 
-            // 2. Upload video file
             showStatus(`Uploading video file: ${primaryFile.name}...`, "orange");
             const videoFileBase64 = await readFileAsBase64(primaryFile);
             await commitToBranch(`videos/${customBase64Id}/${primaryFile.name}`, videoFileBase64, `Upload video asset for ${customBase64Id}`);
 
-            // 3. Open Pull Request
             showStatus("Opening Pull Request...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
                 method: "POST",
@@ -308,7 +320,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const prData = await prRes.json();
             showStatus(`SUCCESS!<br><a href="${prData.html_url}" target="_blank">View Pull Request</a>`, "green");
 
-            // Reset form
             uploadForm.reset();
             submitBtn.disabled = false;
 
