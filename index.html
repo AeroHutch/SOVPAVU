@@ -1,17 +1,72 @@
-<title>Internal</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Video Player</title>
+</head>
+<body>
+
 <div id="video-app">
-    <label for="language-selector">Choose a language:</label>
-    <select id="language-selector">
-        <option value="">Loading languages...</option>
-    </select>
+    <div>
+        <label for="language-selector">Choose a language:</label>
+        <select id="language-selector">
+            <option value="">Loading languages...</option>
+        </select>
+    </div>
+    
+    <button id="upload-btn">+ Upload New Video</button>
+    
     <hr>
+    
     <iframe 
         id="video-frame" 
         width="640" 
         height="360" 
         src="" 
-        frameborder="0" 
         allowfullscreen>
     </iframe>
 </div>
+
+<div id="upload-modal">
+    <div>
+        <span id="close-modal">&times; Close</span>
+        <h2>Upload & Auto-Commit Video</h2>
+        <form id="upload-form">
+            
+            <div>
+                <label for="github-token">GitHub Token (Fine-grained):</label>
+                <input type="password" id="github-token" placeholder="github_pat_xxxxxxxx..." required>
+                <p>Requires Content Write Access limited to this single repository.</p>
+            </div>
+
+            <div>
+                <label>1. Select Primary Video File Asset:</label>
+                <input type="file" id="primary-video-file" accept="video/mp4" required>
+            </div>
+            
+            <div>
+                <label>2. Primary Language Tag (e.g., en, nl-NL, pt-PT):</label>
+                <input type="text" id="primary-lang-tag" placeholder="en-NL" required>
+            </div>
+
+            <div>
+                <label>3. Primary Video Title String:</label>
+                <input type="text" id="primary-video-title" placeholder="Video Title" required>
+            </div>
+
+            <hr>
+            <label>4. Add Extra Translations / Dubs (Optional):</label>
+            <div id="translations-container"></div>
+            <button type="button" id="add-translation-btn">+ Add Translation Track</button>
+            <hr>
+
+            <button type="submit" id="submit-btn">Commit Directory Arrays to GitHub</button>
+            <div id="status"></div>
+        </form>
+    </div>
+</div>
+
 <script src="script.js"></script>
+</body>
+</html>
