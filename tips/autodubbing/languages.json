@@ -1,0 +1,10 @@
+{
+  "automated_dubbing_targets": [
+    { "code": "es-US", "name": "Spanish (United States)" },
+    { "code": "de-DE", "name": "German (Germany)" },
+    { "code": "pt-BR", "name": "Portuguese (Portugal)" },
+    { "code": "nl-NL", "name": "Dutch (Netherlands)" },
+    { "code": "tr-TR", "name": "Turkish (Turkey)" },
+    { "code": "ru-RU", "name": "Russian (Russia)" },
+  ]
+}
