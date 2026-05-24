@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Determine user's local browser language context (e.g., 'en', 'de', 'nl')
     const userLang = navigator.language.split('-')[0] || 'en'; 
 
-    // Setup browser built-in localization engines based on the visitor's language
+    // Setup separate single-purpose translators
     const langNamesTranslator = new Intl.DisplayNames([userLang], { type: 'language' });
     const regionNamesTranslator = new Intl.DisplayNames([userLang], { type: 'region' });
 
@@ -56,28 +56,31 @@ document.addEventListener("DOMContentLoaded", () => {
             let formattedDropdownText = '';
 
             try {
-                // Initialize a strict local representation of the tag entered (handles 'en', 'en-NL', 'nl-nl', etc.)
-                const targetLocale = new Intl.Locale(lang);
-                
-                let langCode = targetLocale.language;
-                let regionCode = targetLocale.region;
+                let langCode = lang;
+                let regionCode = '';
 
-                // If no region was explicitly provided (e.g. just 'nl' or 'de'), maximize it to find the default country
-                if (!regionCode) {
-                    const maximized = targetLocale.maximize();
-                    if (maximized.region) {
-                        regionCode = maximized.region;
+                // SPLIT STRATEGY: Separate language and region manually to avoid browser override
+                if (lang.includes('-')) {
+                    const parts = lang.split('-');
+                    langCode = parts[0].toLowerCase();
+                    regionCode = parts[1].toUpperCase();
+                } else {
+                    // Fallback to find standard region if no dash exists (e.g. 'nl' -> 'NL')
+                    const maximizedLocale = new Intl.Locale(lang).maximize();
+                    if (maximizedLocale.region) {
+                        regionCode = maximizedLocale.region.toUpperCase();
                     }
                 }
 
-                // Translate codes into full names using visitor's local language context
+                // Translate each code segment completely independently
                 const baseLanguage = langNamesTranslator.of(langCode);
-                const countryName = regionCode ? regionNamesTranslator.of(regionCode.toUpperCase()) : '';
+                const countryName = regionCode ? regionNamesTranslator.of(regionCode) : '';
                 
+                // Manually combine strings so 'en-NL' forces 'English (Netherlands)'
                 formattedDropdownText = countryName ? `${baseLanguage} (${countryName})` : baseLanguage;
 
             } catch (e) {
-                // Hard fallback to capitalized code if lookups fail
+                // Hard fallback if string processing or lookups fail
                 formattedDropdownText = lang.toUpperCase();
             }
 
