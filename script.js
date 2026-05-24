@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // Method 2 Auto Detection: Isolates original video by matching key-name differences
             const originalLangCode = availableLangs.find(lang => {
                 const filename = videosData[lang].toLowerCase();
                 const cleanLang = lang.toLowerCase().replace('-', '');
@@ -59,7 +58,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     let langCode = lang;
                     let regionCode = '';
 
-                    // SPLIT STRATEGY: Manually splits components to bypass default browser overrides (e.g. en-NL)
                     if (lang.includes('-')) {
                         const parts = lang.split('-');
                         langCode = parts[0].toLowerCase();
@@ -137,11 +135,10 @@ document.addEventListener("DOMContentLoaded", () => {
     closeModal.addEventListener('click', () => uploadModal.style.display = 'none');
     window.addEventListener('click', (e) => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
-    // --- 4. GITHUB REPOSITORY DIRECT WRITER ---
+    // --- 4. GITHUB REPOSITORY PULL REQUEST GENERATOR ---
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Automatically map paths straight out of your live domain structure 
         const hostnameParts = window.location.hostname.split('.');
         const owner = hostnameParts[0]; 
         const pathParts = window.location.pathname.split('/');
@@ -153,65 +150,101 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
 
         if (!owner || !repo || repo === 'index.html') {
-            showStatus("Error: Unable to verify repository tracking coordinates from context URL parameters.", "red");
+            showStatus("Error: Unable to verify repository coordinates from context URL.", "red");
             return;
         }
 
         submitBtn.disabled = true;
-        showStatus("Analyzing and structuring payload data streams...", "orange");
+        showStatus("Initializing request streams...", "orange");
 
-        // Algorithm Execution: Generates random 8-character long numeric array sequence encoded into Base64
+        // Algorithm: Random 8-character long numeric string encoded into Base64
         let randomNumericString = '';
         for (let i = 0; i < 8; i++) {
             randomNumericString += Math.floor(Math.random() * 10).toString();
         }
-        const customBase64Id = btoa(randomNumericString);
+        
+        // Encodes string and strips out any equal sign symbols (=) to maintain look consistency
+        const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
+        const cleanBranchName = `video-id-${customBase64Id}`;
 
         let videoJson = {};
         let titleJson = {};
-
         videoJson[primaryLang] = primaryFile.name;
         titleJson[primaryLang] = primaryTitle;
 
-        // Communication channel helper transforming content and putting files directly onto GitHub branch trees
-        async function commitToGitHub(path, jsonContent) {
-            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-            const base64Payload = btoa(unescape(encodeURIComponent(JSON.stringify(jsonContent, null, 2))));
-            
-            const response = await fetch(url, {
-                method: "PUT",
-                headers: {
-                    "Authorization": `token ${token}`,
-                    "Accept": "application/vnd.github.v3+json",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    message: `Automated config arrays compilation for tracking entry sequence id: ${customBase64Id}`,
-                    content: base64Payload
-                })
-            });
-            return response;
-        }
+        const githubHeaders = {
+            "Authorization": `token ${token}`,
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+        };
 
         try {
-            showStatus("Pushing workspace changes directly into your public repository tree...", "orange");
+            showStatus("Fetching baseline branch information...", "orange");
+            const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: githubHeaders });
+            if (!repoInfoRes.ok) throw new Error("Could not fetch repository defaults.");
+            const repoData = await repoInfoRes.json();
+            const defaultBranch = repoData.default_branch;
 
+            const branchRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${defaultBranch}`, { headers: githubHeaders });
+            if (!branchRefRes.ok) throw new Error(`Could not find latest commit on branch ${defaultBranch}`);
+            const branchRefData = await branchRefRes.json();
+            const latestCommitSha = branchRefData.object.sha;
+
+            showStatus(`Creating isolated submission branch: ${cleanBranchName}...`, "orange");
+            const createBranchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+                method: "POST",
+                headers: githubHeaders,
+                body: JSON.stringify({
+                    ref: `refs/heads/${cleanBranchName}`,
+                    sha: latestCommitSha
+                })
+            });
+            if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API.");
+
+            async function commitToBranch(path, jsonContent) {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                const base64Payload = btoa(unescape(encodeURIComponent(JSON.stringify(jsonContent, null, 2))));
+                return fetch(url, {
+                    method: "PUT",
+                    headers: githubHeaders,
+                    body: JSON.stringify({
+                        message: `Add metadata configuration arrays for entry id: ${customBase64Id}`,
+                        content: base64Payload,
+                        branch: cleanBranchName
+                    })
+                });
+            }
+
+            showStatus("Uploading configuration arrays to staging branch...", "orange");
             const [res1, res2] = await Promise.all([
-                commitToGitHub(`videos/${customBase64Id}/translations/video.json`, videoJson),
-                commitToGitHub(`videos/${customBase64Id}/translations/title.json`, titleJson)
+                commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJson),
+                commitToBranch(`videos/${customBase64Id}/translations/title.json`, titleJson)
             ]);
+            if (!res1.ok || !res2.ok) throw new Error("Failed to write translation JSON payloads to staging branch.");
 
-            if (res1.ok && res2.ok) {
-                const finalShareUrl = `${window.location.origin}/${repo}/index.html?id=${customBase64Id}`;
-                showStatus(`SUCCESS! Metadata committed to repository branch paths.<br><br><strong>Shareable URL Link:</strong><br><a href="${finalShareUrl}" target="_blank">${finalShareUrl}</a><br><br><em>Action Required: Open your repo and place the actual raw mp4 video files directly inside the new path: videos/${customBase64Id}/</em>`, "green");
+            showStatus("Opening Pull Request sequence...", "orange");
+            const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
+                method: "POST",
+                headers: githubHeaders,
+                body: JSON.stringify({
+                    title: `New Video Metadata Entry [ID: ${customBase64Id}]`,
+                    head: cleanBranchName,
+                    base: defaultBranch,
+                    body: `Automated upload setup initialized for entry ID \`${customBase64Id}\`.\n\n**Next Steps:** Drop your video file \`${primaryFile.name}\` into the \`videos/${customBase64Id}/\` directory inside the files tab before merging this Pull Request.`
+                })
+            });
+
+            if (prRes.ok) {
+                const prData = await prRes.json();
+                showStatus(`SUCCESS! Pull Request opened.<br><br><strong>Pull Request Link:</strong><br><a href="${prData.html_url}" target="_blank">${prData.html_url}</a><br><br><em>Action Needed: Open your PR, navigate to the Files tab, drop your video files under the folder \`videos/${customBase64Id}/\`, and merge!</em>`, "green");
                 uploadForm.reset();
             } else {
-                const errData = await res1.json().catch(() => ({}));
-                showStatus(`GitHub API communication error: ${errData.message || 'Verify token configurations.'}`, "red");
-                submitBtn.disabled = false;
+                const errData = await prRes.json().catch(() => ({}));
+                throw new Error(errData.message || "Pull Request generation rejected.");
             }
+
         } catch (err) {
-            showStatus(`Network transmission failure: ${err.message}`, "red");
+            showStatus(`Execution Error: ${err.message}`, "red");
             submitBtn.disabled = false;
         }
     });
