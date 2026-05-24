@@ -55,14 +55,6 @@
                 <input type="text" id="primary-video-title" placeholder="Video Title" required>
             </div>
 
-            <div>
-                <label>4. Is this an Automatic AI Dub?</label>
-                <select id="primary-automatic-status">
-                    <option value="true">Yes (Automatic)</option>
-                    <option value="false">No (Manual / Studio / Original)</option>
-                </select>
-            </div>
-
             <hr>
 
             <button type="submit" id="submit-btn">Submit Pull Request to GitHub</button>
@@ -89,96 +81,90 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const userLang = navigator.language.split('-')[0] || 'en'; 
 
-    const langNamesTranslator = new Intl.DisplayNames([userLang], { type: 'language' });
-    const regionNamesTranslator = new Intl.DisplayNames([userLang], { type: 'region' });
-
-    // Global references mapped at runtime from video.json
-    let titlesData = {};
-    let targetsArray = []; 
-
     // --- 2. AUTOMATED VIDEO PLAYER RENDER ---
+    let tracksArray = []; // Stores the unified dubbing configurations array
+
     if (videoId) {
-        const titleJsonPath = `./videos/${videoId}/translations/title.json`;
         const videoJsonPath = `./videos/${videoId}/translations/video.json`;
 
-        Promise.all([
-            fetch(titleJsonPath).then(res => res.json()).catch(() => ({})),
-            fetch(videoJsonPath).then(res => res.json()).catch(() => ({}))
-        ]).then(([titles, videoDataBody]) => {
-            titlesData = titles;
-            targetsArray = videoDataBody.automated_dubbing_targets || [];
+        fetch(videoJsonPath)
+            .then(res => res.json())
+            .catch(() => ({}))
+            .then(videoDataBody => {
+                // Reads the new custom ".dubbing" data array property
+                tracksArray = videoDataBody.dubbing || [];
 
-            if (targetsArray.length === 0) {
-                languageSelector.innerHTML = '<option>No configurations found</option>';
-                document.title = `Video: ${videoId}`;
-                return;
-            }
-
-            // Figure out the 'Original' code by searching for filenames that don't match their language tag
-            const originalTarget = targetsArray.find(item => {
-                const filename = item.file.toLowerCase();
-                const cleanLang = item.code.toLowerCase().replace('-', '');
-                return !filename.includes(cleanLang);
-            }) || targetsArray[0];
-
-            languageSelector.innerHTML = '';
-
-            const autoOptions = [];
-            const manualOptions = [];
-
-            // Process and build standard dropdown options
-            targetsArray.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.code;
-
-                let displayLabel = item.name;
-                if (item.code === originalTarget.code) {
-                    displayLabel += ' (Original)';
+                if (tracksArray.length === 0) {
+                    languageSelector.innerHTML = '<option>No configurations found</option>';
+                    document.title = `Video: ${videoId}`;
+                    return;
                 }
-                option.textContent = displayLabel;
 
-                if (item.automatic === true) {
-                    autoOptions.push(option);
+                // Identify the Original language code by looking for filenames that don't mismatch their code
+                const originalTarget = tracksArray.find(item => {
+                    const filename = item.file.toLowerCase();
+                    const cleanLang = item.code.toLowerCase().replace('-', '');
+                    return !filename.includes(cleanLang);
+                }) || tracksArray[0];
+
+                languageSelector.innerHTML = '';
+
+                const autoOptions = [];
+                const manualOptions = [];
+
+                // Separate configuration tracks based on the automatic tag boolean value
+                tracksArray.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.code;
+
+                    let displayLabel = item.name;
+                    if (item.code === originalTarget.code) {
+                        displayLabel += ' (Original)';
+                    }
+                    option.textContent = displayLabel;
+
+                    if (item.automatic === true) {
+                        autoOptions.push(option);
+                    } else {
+                        manualOptions.push(option);
+                    }
+                });
+
+                // Render Automatic Dubs group at the top
+                autoOptions.forEach(opt => languageSelector.appendChild(opt));
+
+                // Dropdown divider line injection block
+                if (autoOptions.length > 0 && manualOptions.length > 0) {
+                    const divider = document.createElement('option');
+                    divider.disabled = true;
+                    divider.textContent = "──────────────";
+                    languageSelector.appendChild(divider);
+                }
+
+                // Render Manual Dubs group at the bottom
+                manualOptions.forEach(opt => languageSelector.appendChild(opt));
+
+                // Position fallback default active track selection
+                const codeList = tracksArray.map(t => t.code);
+                if (codeList.includes(userLang)) {
+                    languageSelector.value = userLang;
+                } else if (originalTarget) {
+                    languageSelector.value = originalTarget.code;
                 } else {
-                    manualOptions.push(option);
+                    languageSelector.value = codeList[0];
                 }
+
+                updatePlayer(languageSelector.value);
             });
 
-            // Append Automatic tracks first
-            autoOptions.forEach(opt => languageSelector.appendChild(opt));
-
-            // Dropdown divider injection
-            if (autoOptions.length > 0 && manualOptions.length > 0) {
-                const divider = document.createElement('option');
-                divider.disabled = true;
-                divider.textContent = "──────────────";
-                languageSelector.appendChild(divider);
-            }
-
-            // Append Manual tracks last
-            manualOptions.forEach(opt => languageSelector.appendChild(opt));
-
-            // Fallback selection positioning
-            const codeList = targetsArray.map(t => t.code);
-            if (codeList.includes(userLang)) {
-                languageSelector.value = userLang;
-            } else if (originalTarget) {
-                languageSelector.value = originalTarget.code;
-            } else {
-                languageSelector.value = codeList[0];
-            }
-
-            updatePlayer(languageSelector.value);
-        });
-
         languageSelector.addEventListener('change', (e) => {
-            if (!e.target.value) return; // Prevent crashes if clicking the divider line
+            if (!e.target.value) return; // Guard clause to handle clicking the separator divider line
             updatePlayer(e.target.value);
         });
 
         function updatePlayer(langCode) {
-            const currentTitle = titlesData[langCode] || `Video: ${videoId}`;
-            const matchedTrack = targetsArray.find(t => t.code === langCode);
+            const matchedTrack = tracksArray.find(t => t.code === langCode);
+            const currentTitle = matchedTrack ? matchedTrack.name : `Video: ${videoId}`;
             const currentVideoFile = matchedTrack ? matchedTrack.file : 'default.mp4';
             const fullVideoPath = `./videos/${videoId}/${currentVideoFile}`;
 
@@ -243,43 +229,23 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryFile = document.getElementById('primary-video-file').files[0];
         const primaryLang = document.getElementById('primary-lang-tag').value.trim();
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
-        const isAutomaticStatus = document.getElementById('primary-automatic-status').value === "true";
 
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
 
         let randomNumericString = '';
-        for (let i = 0; i < 8; i++) { randomNumericString += Math.floor(Math.random() * 10).toString(); }
+        for (let i = 0; i < 8; i++) {
+            randomNumericString += Math.floor(Math.random() * 10).toString();
+        }
+        
         const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
-        // Build localized Title structure
+        // Fallback generator for upload submissions using the basic structure mapping
+        let videoJson = {};
         let titleJson = {};
-        
-        // Build the new unified Video array structure based on comma inputs
-        let videoJson = { "automated_dubbing_targets": [] };
-        const tags = primaryLang.split(',').map(t => t.trim()).filter(t => t.length > 0);
-
-        tags.forEach(tag => {
-            titleJson[tag] = primaryTitle;
-
-            // Generate full names dynamically using Intl translation lookups
-            let generatedFullName = tag.toUpperCase();
-            try {
-                let baseCode = tag.split('-')[0].toLowerCase();
-                let regionCode = tag.split('-')[1] ? tag.split('-')[1].toUpperCase() : '';
-                const baseLangName = langNamesTranslator.of(baseCode);
-                const countryName = regionCode ? regionNamesTranslator.of(regionCode) : '';
-                generatedFullName = countryName ? `${baseLangName} (${countryName})` : baseLangName;
-            } catch(e) {}
-
-            videoJson.automated_dubbing_targets.push({
-                "code": tag,
-                "name": generatedFullName,
-                "file": primaryFile.name,
-                "automatic": isAutomaticStatus
-            });
-        });
+        videoJson[primaryLang] = primaryFile.name;
+        titleJson[primaryLang] = primaryTitle;
 
         const githubHeaders = {
             "Authorization": `token ${token}`,
@@ -301,57 +267,72 @@ document.addEventListener("DOMContentLoaded", () => {
 
             showStatus(`Creating isolated submission branch: ${cleanBranchName}...`, "orange");
             const createBranchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
-                method: "POST", headers: githubHeaders,
-                body: JSON.stringify({ ref: `refs/heads/${cleanBranchName}`, sha: latestCommitSha })
+                method: "POST",
+                headers: githubHeaders,
+                body: JSON.stringify({
+                    ref: `refs/heads/${cleanBranchName}`,
+                    sha: latestCommitSha
+                })
             });
             if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API.");
 
             async function commitRawPayloadToBranch(path, base64Payload, commitMsg) {
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-                return await fetch(url, {
-                    method: "PUT", headers: githubHeaders,
-                    body: JSON.stringify({ message: commitMsg, content: base64Payload, branch: cleanBranchName })
+                const response = await fetch(url, {
+                    method: "PUT",
+                    headers: githubHeaders,
+                    body: JSON.stringify({
+                        message: commitMsg,
+                        content: base64Payload,
+                        branch: cleanBranchName
+                    })
                 });
+                return response;
             }
 
-            showStatus("Uploading structure [1/3]: video.json...", "orange");
+            showStatus("Uploading configuration array [1/3]: video.json...", "orange");
             const videoJsonStr = JSON.stringify(videoJson, null, 2);
             const videoJsonBase64 = btoa(encodeURIComponent(videoJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
-            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Create structured video array mapping for ${customBase64Id}`);
-            if (!res1.ok) throw new Error("Failed to write video tracking configuration.");
+            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Add video registry for entry ${customBase64Id}`);
+            if (!res1.ok) throw new Error(`Failed to write video configuration array.`);
 
-            showStatus("Uploading structure [2/3]: title.json...", "orange");
+            showStatus("Uploading configuration array [2/3]: title.json...", "orange");
             const titleJsonStr = JSON.stringify(titleJson, null, 2);
             const titleJsonBase64 = btoa(encodeURIComponent(titleJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
-            const res2 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/title.json`, titleJsonBase64, `Add title configuration details for ${customBase64Id}`);
-            if (!res2.ok) throw new Error("Failed to write title configuration tracking file.");
+            const res2 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/title.json`, titleJsonBase64, `Add title localization entry for ${customBase64Id}`);
+            if (!res2.ok) throw new Error(`Failed to write title configuration array.`);
 
-            showStatus("Processing file streaming payloads [3/3]...", "orange");
+            showStatus("Processing large file binary data streams [3/3]...", "orange");
             const rawFileBase64 = await readFileAsBase64(primaryFile);
             
             showStatus(`Uploading raw video asset file: ${primaryFile.name}...`, "orange");
-            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload video asset file mapping structure`);
-            if (!res3.ok) throw new Error("Binary multi-media streaming data delivery failed.");
+            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload raw video media file asset for entry ${customBase64Id}`);
+            if (!res3.ok) throw new Error(`Failed to upload MP4 video file asset to branch.`);
 
             showStatus("Opening Pull Request sequence...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
-                method: "POST", headers: githubHeaders,
+                method: "POST",
+                headers: githubHeaders,
                 body: JSON.stringify({
-                    title: `New Array Structured Video Entry [ID: ${customBase64Id}]`,
-                    head: cleanBranchName, base: defaultBranch,
-                    body: `Automated upload workflow complete setup finished for ID \`${customBase64Id}\`.`
+                    title: `New Video Metadata Entry [ID: ${customBase64Id}]`,
+                    head: cleanBranchName,
+                    base: defaultBranch,
+                    body: `Automated complete workflow upload setup completed for entry ID \`${customBase64Id}\`.`
                 })
             });
 
             if (prRes.ok) {
                 const prData = await prRes.json();
-                showStatus(`SUCCESS!<br><br><a href="${prData.html_url}" target="_blank">View Pull Request</a>`, "green");
-                uploadForm.reset();
-                if (localStorage.getItem('saved_github_token')) tokenInput.value = localStorage.getItem('saved_github_token');
+                showStatus(`SUCCESS! Video and configurations have been uploaded successfully!<br><br><strong>Pull Request Link:</strong><br><a href="${prData.html_url}" target="_blank">${prData.html_url}</a>`, "green");
+                
+                document.getElementById('primary-video-file').value = '';
+                document.getElementById('primary-lang-tag').value = '';
+                document.getElementById('primary-video-title').value = '';
+                submitBtn.disabled = false;
             } else {
-                throw new Error("Pull Request execution was blocked.");
+                throw new Error("Pull Request generation rejected.");
             }
-            submitBtn.disabled = false;
+
         } catch (err) {
             showStatus(`Execution Error: ${err.message}`, "red");
             submitBtn.disabled = false;
