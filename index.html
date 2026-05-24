@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Internal Video Player</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
-        #upload-modal > div { background: #fff; margin: 5% auto; padding: 20px; width: 500px; position: relative; border-radius: 8px; }
-        #close-modal { cursor: pointer; position: absolute; top: 10px; right: 10px; font-weight: bold; }
-        #status { margin-top: 10px; }
-        iframe { border: none; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal Video Player</title>
+<style>
+    body { font-family: sans-serif; margin: 20px; }
+    #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
+    #upload-modal > div { background: #fff; margin: 5% auto; padding: 20px; width: 500px; position: relative; border-radius: 8px; }
+    #close-modal { cursor: pointer; position: absolute; top: 10px; right: 10px; font-weight: bold; }
+    #status { margin-top: 10px; }
+    iframe { border: none; }
+</style>
 </head>
 <body>
 
@@ -123,21 +123,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 tracksArray.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.code;
+
                     let displayLabel = item.name;
-                    if (item.code === originalTarget.code) displayLabel += ' (Original)';
+                    if (item.code === originalTarget.code) {
+                        displayLabel += ' (Original)';
+                    }
                     option.textContent = displayLabel;
-                    if (item.automatic) autoOptions.push(option);
-                    else manualOptions.push(option);
+
+                    if (item.automatic === true) {
+                        autoOptions.push(option);
+                    } else {
+                        manualOptions.push(option);
+                    }
                 });
 
-                autoOptions.forEach(opt => languageSelector.appendChild(opt));
-                if (autoOptions.length && manualOptions.length) {
+                // --- MANUAL FIRST ---
+                manualOptions.forEach(opt => languageSelector.appendChild(opt));
+
+                if (autoOptions.length > 0 && manualOptions.length > 0) {
                     const divider = document.createElement('option');
                     divider.disabled = true;
                     divider.textContent = "──────────────";
                     languageSelector.appendChild(divider);
                 }
-                manualOptions.forEach(opt => languageSelector.appendChild(opt));
+
+                autoOptions.forEach(opt => languageSelector.appendChild(opt));
 
                 const codeList = tracksArray.map(t => t.code);
                 if (codeList.includes(userLang)) languageSelector.value = userLang;
@@ -218,12 +228,9 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
 
-let randomNumericString = '';
-        for (let i = 0; i < 8; i++) {
-            randomNumericString += Math.floor(Math.random() * 10).toString();
-        }
-
-        const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
+        let randomNumericString = '';
+        for (let i = 0; i < 8; i++) randomNumericString += Math.floor(Math.random() * 10);
+                const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
         const videoJson = {
@@ -245,6 +252,7 @@ let randomNumericString = '';
 
         try {
             showStatus("Fetching repository info...", "orange");
+
             const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: githubHeaders });
             if (!repoInfoRes.ok) throw new Error("Could not fetch repository info.");
             const repoData = await repoInfoRes.json();
