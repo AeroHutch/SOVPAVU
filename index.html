@@ -210,7 +210,6 @@ document.addEventListener("DOMContentLoaded", () => {
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Hardcoded identifiers bypass URL parsing differences across browsers
         const owner = "AeroHutch"; 
         const repo = "SOVPAVU";
 
@@ -224,13 +223,11 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
 
-        // Algorithm: Random 8-character long numeric string encoded into Base64
         let randomNumericString = '';
         for (let i = 0; i < 8; i++) {
             randomNumericString += Math.floor(Math.random() * 10).toString();
         }
         
-        // Encodes string and strips out any equal sign symbols (=) to maintain look consistency
         const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
@@ -248,7 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             showStatus("Fetching baseline branch information...", "orange");
             const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: githubHeaders });
-            if (!repoInfoRes.ok) throw new Error("Could not fetch repository defaults. Double check your token permissions.");
+            if (!repoInfoRes.ok) throw new Error("Could not fetch repository defaults. Double check your token repository access selection.");
             const repoData = await repoInfoRes.json();
             const defaultBranch = repoData.default_branch;
 
@@ -266,11 +263,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     sha: latestCommitSha
                 })
             });
-            if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API. Verify 'Contents: Read/Write' token token scopes.");
+            if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API. Verify 'Contents: Read/Write' token scopes.");
 
+            // Fixed function to handle special international characters safely
             async function commitToBranch(path, jsonContent) {
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-                const base64Payload = btoa(unescape(encodeURIComponent(JSON.stringify(jsonContent, null, 2))));
+                const jsonString = JSON.stringify(jsonContent, null, 2);
+                const base64Payload = btoa(unescape(encodeURIComponent(jsonString)));
+                
                 return fetch(url, {
                     method: "PUT",
                     headers: githubHeaders,
@@ -311,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 submitBtn.disabled = false;
             } else {
                 const errData = await prRes.json().catch(() => ({}));
-                throw new Error(errData.message || "Pull Request generation rejected. Verify 'Pull requests: Read/Write' token token scopes.");
+                throw new Error(errData.message || "Pull Request generation rejected. Verify 'Pull requests: Read/Write' token scopes.");
             }
 
         } catch (err) {
