@@ -1,12 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // --- 1. CORE VARIABLES & URL DETECTION ---
+    // --- 1. SETUP DOM TARGET INTERFACE LOCATORS ---
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
     const languageSelector = document.getElementById('language-selector');
     const videoFrame = document.getElementById('video-frame');
 
-    // UI elements for the uploading interface
     const uploadBtn = document.getElementById('upload-btn');
     const uploadModal = document.getElementById('upload-modal');
     const closeModal = document.getElementById('close-modal');
@@ -16,14 +15,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submit-btn');
 
-    // Determine the visitor's local system language context
     const userLang = navigator.language.split('-')[0] || 'en'; 
 
-    // Setup browser localization engines
     const langNamesTranslator = new Intl.DisplayNames([userLang], { type: 'language' });
     const regionNamesTranslator = new Intl.DisplayNames([userLang], { type: 'region' });
 
-    // --- 2. AUTOMATED VIDEO PLAYER ENGINE ---
+    // --- 2. AUTOMATED VIDEO PLAYER RENDER ---
     if (videoId) {
         const titleJsonPath = `./videos/${videoId}/translations/title.json`;
         const videoJsonPath = `./videos/${videoId}/translations/video.json`;
@@ -31,7 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
         let titlesData = {};
         let videosData = {};
 
-        // Fetch translations concurrently
         Promise.all([
             fetch(titleJsonPath).then(res => res.json()).catch(() => ({})),
             fetch(videoJsonPath).then(res => res.json()).catch(() => ({}))
@@ -47,8 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // METHOD 2 AUTOMATIC DETECTION:
-            // Find the language key whose filename DOES NOT contain its own language code extension.
+            // Method 2 Auto Detection: Isolates original video by matching key-name differences
             const originalLangCode = availableLangs.find(lang => {
                 const filename = videosData[lang].toLowerCase();
                 const cleanLang = lang.toLowerCase().replace('-', '');
@@ -66,29 +61,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     let langCode = lang;
                     let regionCode = '';
 
-                    // SPLIT STRATEGY: Manually process string components to preserve custom configurations (e.g. en-NL)
+                    // SPLIT STRATEGY: Manually splits components to bypass default browser overrides (e.g. en-NL)
                     if (lang.includes('-')) {
                         const parts = lang.split('-');
                         langCode = parts[0].toLowerCase();
                         regionCode = parts[1].toUpperCase();
                     } else {
-                        // Maximize 2-letter codes automatically to find implicit country associations
                         const maximizedLocale = new Intl.Locale(lang).maximize();
                         if (maximizedLocale.region) {
                             regionCode = maximizedLocale.region.toUpperCase();
                         }
                     }
 
-                    // Translate codes independently
                     const baseLanguage = langNamesTranslator.of(langCode);
                     const countryName = regionCode ? regionNamesTranslator.of(regionCode) : '';
-                    
                     formattedDropdownText = countryName ? `${baseLanguage} (${countryName})` : baseLanguage;
                 } catch (e) {
                     formattedDropdownText = lang.toUpperCase();
                 }
 
-                // Append original tag
                 if (lang === originalLangCode) {
                     formattedDropdownText += ' (Original)';
                 }
@@ -97,7 +88,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 languageSelector.appendChild(option);
             });
 
-            // Handle baseline default selection
             if (availableLangs.includes(userLang)) {
                 languageSelector.value = userLang;
             } else if (availableLangs.includes(originalLangCode)) {
@@ -141,29 +131,30 @@ document.addEventListener("DOMContentLoaded", () => {
             videoFrame.srcdoc = iframeHTML;
         }
     } else {
-        languageSelector.innerHTML = '<option>No active video ID parameters located.</option>';
+        languageSelector.innerHTML = '<option>No active parameters located. Launch upload suite to test.</option>';
     }
 
-    // --- 3. DIRECT GITHUB API COMMITS ENGINE ---
-    uploadBtn.addEventListener('click', () => uploadModal.style.display = 'block');
+    // --- 3. DYNAMIC INTERACTIVE MODAL COMPONENT ---
+    uploadBtn.addEventListener('click', () => { statusDiv.style.display = "none"; uploadModal.style.display = 'block'; });
     closeModal.addEventListener('click', () => uploadModal.style.display = 'none');
+    window.addEventListener('click', (e) => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
-    // Add translation track elements dynamically
     addTranslationBtn.addEventListener('click', () => {
         const row = document.createElement('div');
         row.className = 'translation-row';
         row.innerHTML = `
-            <input type="text" placeholder="Tag (e.g. de)" class="trans-lang" style="width:25%;" required>
-            <input type="text" placeholder="Translated Title" class="trans-title" style="width:45%;" required>
-            <input type="text" placeholder="Filename (e.g. bowalkingde.mp4)" class="trans-file" style="width:30%;" required>
+            <input type="text" placeholder="Tag (e.g. de)" class="trans-lang" style="width:25%; padding: 6px;" required>
+            <input type="text" placeholder="Translated Title" class="trans-title" style="width:45%; padding: 6px;" required>
+            <input type="text" placeholder="Filename (e.g. video_de.mp4)" class="trans-file" style="width:30%; padding: 6px;" required>
         `;
         translationsContainer.appendChild(row);
     });
 
+    // --- 4. GITHUB REPOSITORY DIRECT WRITER ---
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Deduce user repository tracking parameters from browser runtime path names
+        // Automatically map paths straight out of your live domain structure 
         const hostnameParts = window.location.hostname.split('.');
         const owner = hostnameParts[0]; 
         const pathParts = window.location.pathname.split('/');
@@ -175,14 +166,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
 
         if (!owner || !repo || repo === 'index.html') {
-            showStatus("Error: Unable to map repository tracking configurations dynamically from URL parameters.", "red");
+            showStatus("Error: Unable to verify repository tracking coordinates from context URL parameters.", "red");
             return;
         }
 
         submitBtn.disabled = true;
-        showStatus("Processing structural array payloads...", "orange");
+        showStatus("Analyzing and structuring payload data streams...", "orange");
 
-        // Compute Base64 custom encoded identifier key matching random 8-character long string criteria
+        // Algorithm Execution: Generates random 8-character long numeric array sequence encoded into Base64
         let randomNumericString = '';
         for (let i = 0; i < 8; i++) {
             randomNumericString += Math.floor(Math.random() * 10).toString();
@@ -206,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Communication channel helper pushing payloads directly to GitHub REST API content branches
+        // Communication channel helper transforming content and putting files directly onto GitHub branch trees
         async function commitToGitHub(path, jsonContent) {
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             const base64Payload = btoa(unescape(encodeURIComponent(JSON.stringify(jsonContent, null, 2))));
@@ -219,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    message: `Auto-commit structures configuration for video sequence entry id: ${customBase64Id}`,
+                    message: `Automated config arrays compilation for tracking entry sequence id: ${customBase64Id}`,
                     content: base64Payload
                 })
             });
@@ -227,9 +218,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         try {
-            showStatus("Pushing configuration tracking updates to active repository paths...", "orange");
+            showStatus("Pushing workspace changes directly into your public repository tree...", "orange");
 
-            // Deploy concurrent asynchronous API write commits to your code repository tree branches
             const [res1, res2] = await Promise.all([
                 commitToGitHub(`videos/${customBase64Id}/translations/video.json`, videoJson),
                 commitToGitHub(`videos/${customBase64Id}/translations/title.json`, titleJson)
@@ -237,16 +227,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (res1.ok && res2.ok) {
                 const finalShareUrl = `${window.location.origin}/${repo}/index.html?id=${customBase64Id}`;
-                showStatus(`SUCCESS! Structural components successfully created.<br><br><strong>Your Target Shareable Link:</strong><br><a href="${finalShareUrl}" target="_blank">${finalShareUrl}</a><br><br><em>Note: Ensure you drop the actual mp4 video tracks manually inside your repository structure under the path: videos/${customBase64Id}/</em>`, "green");
+                showStatus(`SUCCESS! Metadata committed to repository branch paths.<br><br><strong>Shareable URL Link:</strong><br><a href="${finalShareUrl}" target="_blank">${finalShareUrl}</a><br><br><em>Action Required: Open your repo and place the actual raw mp4 video files directly inside the new path: videos/${customBase64Id}/</em>`, "green");
                 uploadForm.reset();
                 translationsContainer.innerHTML = '';
             } else {
                 const errData = await res1.json().catch(() => ({}));
-                showStatus(`GitHub API rejected tracking push updates: ${errData.message || 'Verify token credentials and scope adjustments.'}`, "red");
+                showStatus(`GitHub API communication error: ${errData.message || 'Verify token configurations.'}`, "red");
                 submitBtn.disabled = false;
             }
         } catch (err) {
-            showStatus(`Network connectivity execution errors: ${err.message}`, "red");
+            showStatus(`Network transmission failure: ${err.message}`, "red");
             submitBtn.disabled = false;
         }
     });
