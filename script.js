@@ -56,27 +56,23 @@ document.addEventListener("DOMContentLoaded", () => {
             let formattedDropdownText = '';
 
             try {
-                let langCode = lang;
-                let regionCode = '';
+                // Initialize a strict local representation of the tag entered (handles 'en', 'en-NL', 'nl-nl', etc.)
+                const targetLocale = new Intl.Locale(lang);
+                
+                let langCode = targetLocale.language;
+                let regionCode = targetLocale.region;
 
-                // 1. Check if a region is explicitly provided (e.g., 'pt-PT', 'nl-NL', 'nl-nl')
-                if (lang.includes('-')) {
-                    const parts = lang.split('-');
-                    langCode = parts[0].toLowerCase();
-                    regionCode = parts[1].toUpperCase(); // Ensures 'nl' or 'NL' safely formats to uppercase
-                } else {
-                    // 2. FULLY AUTOMATED DETECTOR:
-                    // If no country is specified (e.g., 'nl', 'de'), ask the browser 
-                    // to find the standard default region associated with that language code.
-                    const maximizedLocale = new Intl.Locale(lang).maximize();
-                    if (maximizedLocale.region) {
-                        regionCode = maximizedLocale.region.toUpperCase();
+                // If no region was explicitly provided (e.g. just 'nl' or 'de'), maximize it to find the default country
+                if (!regionCode) {
+                    const maximized = targetLocale.maximize();
+                    if (maximized.region) {
+                        regionCode = maximized.region;
                     }
                 }
 
-                // 3. Translate codes into full names using visitor's local language context
+                // Translate codes into full names using visitor's local language context
                 const baseLanguage = langNamesTranslator.of(langCode);
-                const countryName = regionCode ? regionNamesTranslator.of(regionCode) : '';
+                const countryName = regionCode ? regionNamesTranslator.of(regionCode.toUpperCase()) : '';
                 
                 formattedDropdownText = countryName ? `${baseLanguage} (${countryName})` : baseLanguage;
 
