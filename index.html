@@ -265,29 +265,36 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API. Verify 'Contents: Read/Write' token scopes.");
 
-            // Fixed function to handle special international characters safely
+            // Helper to write files sequentially
             async function commitToBranch(path, jsonContent) {
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
                 const jsonString = JSON.stringify(jsonContent, null, 2);
-                const base64Payload = btoa(unescape(encodeURIComponent(jsonString)));
                 
-                return fetch(url, {
+                // Safe UTF-8 Base64 translation helper
+                const base64Payload = btoa(encodeURIComponent(jsonString).replace(/%([0-9A-F]{2})/g, function(match, p1) {
+                    return String.fromCharCode('0x' + p1);
+                }));
+                
+                const response = await fetch(url, {
                     method: "PUT",
                     headers: githubHeaders,
                     body: JSON.stringify({
-                        message: `Add metadata configuration arrays for entry id: ${customBase64Id}`,
+                        message: `Add metadata configuration entry: ${customBase64Id}`,
                         content: base64Payload,
                         branch: cleanBranchName
                     })
                 });
+                return response;
             }
 
-            showStatus("Uploading configuration arrays to staging branch...", "orange");
-            const [res1, res2] = await Promise.all([
-                commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJson),
-                commitToBranch(`videos/${customBase64Id}/translations/title.json`, titleJson)
-            ]);
-            if (!res1.ok || !res2.ok) throw new Error("Failed to write translation JSON payloads to staging branch.");
+            // FIXED: Switched from parallel Promise.all to sequential execution to stop workspace tree conflicts
+            showStatus("Uploading configuration array [1/2]: video.json...", "orange");
+            const res1 = await commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJson);
+            if (!res1.ok) throw new Error(`Failed to write video configuration array (Status: ${res1.status})`);
+
+            showStatus("Uploading configuration array [2/2]: title.json...", "orange");
+            const res2 = await commitToBranch(`videos/${customBase64Id}/translations/title.json`, titleJson);
+            if (!res2.ok) throw new Error(`Failed to write title configuration array (Status: ${res2.status})`);
 
             showStatus("Opening Pull Request sequence...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
