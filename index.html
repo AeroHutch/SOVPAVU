@@ -31,13 +31,13 @@
 <div id="upload-modal">
     <div>
         <span id="close-modal">&times; Close</span>
-        <h2>Upload & Auto-Commit Video</h2>
+        <h2>Upload & Open Pull Request</h2>
         <form id="upload-form">
             
             <div>
                 <label for="github-token">GitHub Token (Fine-grained):</label>
                 <input type="password" id="github-token" placeholder="github_pat_xxxxxxxx..." required>
-                <p>Requires Content Write Access limited to this single repository.</p>
+                <p>Requires Content Write Access and Pull Request Write Access limited to this single repository.</p>
             </div>
 
             <div>
@@ -57,7 +57,7 @@
 
             <hr>
 
-            <button type="submit" id="submit-btn">Commit Directory Arrays to GitHub</button>
+            <button type="submit" id="submit-btn">Submit Pull Request to GitHub</button>
             <div id="status"></div>
         </form>
     </div>
