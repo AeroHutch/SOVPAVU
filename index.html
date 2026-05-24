@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Internal Video Player</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
+        #upload-modal > div { background: #fff; margin: 5% auto; padding: 20px; width: 500px; position: relative; border-radius: 8px; }
+        #close-modal { cursor: pointer; position: absolute; top: 10px; right: 10px; font-weight: bold; }
+        #status { margin-top: 10px; }
+        iframe { border: none; }
+    </style>
 </head>
 <body>
 
@@ -73,7 +81,6 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    // --- 1. SETUP DOM TARGET INTERFACE LOCATORS ---
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
@@ -87,22 +94,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submit-btn');
 
-    const userLang = navigator.language.split('-')[0] || 'en'; 
+    const userLang = (navigator.language || 'en').split('-')[0];
 
-    // --- 2. AUTOMATED VIDEO PLAYER RENDER ---
-    let tracksArray = []; 
+    let tracksArray = [];
 
     if (videoId) {
         const videoJsonPath = `./videos/${videoId}/translations/video.json`;
 
         fetch(videoJsonPath)
-            .then(res => {
-                if (!res.ok) throw new Error("File fetch failed");
-                return res.json();
-            })
+            .then(res => res.ok ? res.json() : {})
             .catch(() => ({}))
             .then(videoDataBody => {
-                // Read from the unified ".dubbing" data array property
                 tracksArray = videoDataBody.dubbing || [];
 
                 if (tracksArray.length === 0) {
@@ -111,7 +113,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
-                // Identify the Original language code by scanning array entries
                 const originalTarget = tracksArray.find(item => !item.automatic) || tracksArray[0];
 
                 languageSelector.innerHTML = '';
@@ -119,53 +120,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 const autoOptions = [];
                 const manualOptions = [];
 
-                // Populate choices based on the automatic boolean flag
                 tracksArray.forEach(item => {
                     const option = document.createElement('option');
                     option.value = item.code;
-
                     let displayLabel = item.name;
-                    if (item.code === originalTarget.code) {
-                        displayLabel += ' (Original)';
-                    }
+                    if (item.code === originalTarget.code) displayLabel += ' (Original)';
                     option.textContent = displayLabel;
-
-                    if (item.automatic === true) {
-                        autoOptions.push(option);
-                    } else {
-                        manualOptions.push(option);
-                    }
+                    if (item.automatic) autoOptions.push(option);
+                    else manualOptions.push(option);
                 });
 
-                // Append Automatic options at the top
                 autoOptions.forEach(opt => languageSelector.appendChild(opt));
-
-                // Clean divider injector line
-                if (autoOptions.length > 0 && manualOptions.length > 0) {
+                if (autoOptions.length && manualOptions.length) {
                     const divider = document.createElement('option');
                     divider.disabled = true;
                     divider.textContent = "──────────────";
                     languageSelector.appendChild(divider);
                 }
-
-                // Append Manual/Studio options at the bottom
                 manualOptions.forEach(opt => languageSelector.appendChild(opt));
 
-                // Fallback default selection active positioning
                 const codeList = tracksArray.map(t => t.code);
-                if (codeList.includes(userLang)) {
-                    languageSelector.value = userLang;
-                } else if (originalTarget) {
-                    languageSelector.value = originalTarget.code;
-                } else {
-                    languageSelector.value = codeList[0];
-                }
+                if (codeList.includes(userLang)) languageSelector.value = userLang;
+                else if (originalTarget) languageSelector.value = originalTarget.code;
+                else languageSelector.value = codeList[0];
 
                 updatePlayer(languageSelector.value);
             });
 
-        languageSelector.addEventListener('change', (e) => {
-            if (!e.target.value) return; // Prevent breakages when clicking the disabled divider line
+        languageSelector.addEventListener('change', e => {
+            if (!e.target.value) return;
             updatePlayer(e.target.value);
         });
 
@@ -177,54 +160,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
             document.title = currentTitle;
 
-            const iframeHTML = `
+            videoFrame.srcdoc = `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <style>
-                        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; height: 100vh; position: relative; }
-                        video { width: 100%; height: 100%; object-fit: contain; }
-                        .video-title { position: absolute; top: 12px; left: 12px; pointer-events: none; background: rgba(0,0,0,0.7); padding: 6px 12px; border-radius: 4px; font-size: 14px; z-index: 10; }
+                        body { margin:0; background:#000; color:#fff; font-family:sans-serif; overflow:hidden; height:100vh; position:relative; }
+                        video { width:100%; height:100%; object-fit:contain; }
+                        .video-title { position:absolute; top:12px; left:12px; pointer-events:none; background: rgba(0,0,0,0.7); padding:6px 12px; border-radius:4px; font-size:14px; z-index:10; }
                     </style>
                 </head>
                 <body>
-                    <div class="video-title">${currentTitle}</div>
+                    <div class="video-title">${currentTitle.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
                     <video id="player" controls autoplay>
                         <source src="${fullVideoPath}" type="video/mp4">
                     </video>
                 </body>
                 </html>
             `;
-            videoFrame.srcdoc = iframeHTML;
         }
     } else {
         languageSelector.innerHTML = '<option>No active parameters located. Launch upload suite to test.</option>';
     }
 
-    // --- 3. DYNAMIC INTERACTIVE MODAL COMPONENT ---
+    // --- Modal ---
     uploadBtn.addEventListener('click', () => { statusDiv.style.display = "none"; uploadModal.style.display = 'block'; });
     closeModal.addEventListener('click', () => uploadModal.style.display = 'none');
-    window.addEventListener('click', (e) => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
+    window.addEventListener('click', e => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
-    // --- 4. GITHUB REPOSITORY PULL REQUEST GENERATOR ---
+    // --- GitHub Upload ---
     const tokenInput = document.getElementById('github-token');
-    if (localStorage.getItem('saved_github_token')) {
-        tokenInput.value = localStorage.getItem('saved_github_token');
-    }
+    if (localStorage.getItem('saved_github_token')) tokenInput.value = localStorage.getItem('saved_github_token');
 
     function readFileAsBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onload = () => {
-                const base64String = reader.result.split(',')[1];
-                resolve(base64String);
-            };
+            reader.onload = () => resolve(reader.result.split(',')[1]);
             reader.onerror = error => reject(error);
             reader.readAsDataURL(file);
         });
     }
 
-    uploadForm.addEventListener('submit', async (e) => {
+    uploadForm.addEventListener('submit', async e => {
         e.preventDefault();
 
         const owner = "AeroHutch"; 
@@ -241,16 +218,15 @@ document.addEventListener("DOMContentLoaded", () => {
         submitBtn.disabled = true;
         showStatus("Initializing request streams...", "orange");
 
-        let randomNumericString = '';
+let randomNumericString = '';
         for (let i = 0; i < 8; i++) {
             randomNumericString += Math.floor(Math.random() * 10).toString();
         }
-        
+
         const customBase64Id = btoa(randomNumericString).replace(/=/g, '');
         const cleanBranchName = `video-id-${customBase64Id}`;
 
-        // Generates the new clean array entry structure matching your format requirements
-        let videoJson = {
+        const videoJson = {
             "dubbing": [
                 {
                     "code": primaryLang,
@@ -268,18 +244,18 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         try {
-            showStatus("Fetching baseline branch information...", "orange");
+            showStatus("Fetching repository info...", "orange");
             const repoInfoRes = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: githubHeaders });
-            if (!repoInfoRes.ok) throw new Error("Could not fetch repository defaults.");
+            if (!repoInfoRes.ok) throw new Error("Could not fetch repository info.");
             const repoData = await repoInfoRes.json();
             const defaultBranch = repoData.default_branch;
 
             const branchRefRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/ref/heads/${defaultBranch}`, { headers: githubHeaders });
-            if (!branchRefRes.ok) throw new Error(`Could not find latest commit on branch ${defaultBranch}`);
+            if (!branchRefRes.ok) throw new Error("Could not fetch latest commit SHA.");
             const branchRefData = await branchRefRes.json();
             const latestCommitSha = branchRefData.object.sha;
 
-            showStatus(`Creating isolated submission branch: ${cleanBranchName}...`, "orange");
+            showStatus(`Creating branch: ${cleanBranchName}...`, "orange");
             const createBranchRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
                 method: "POST",
                 headers: githubHeaders,
@@ -288,39 +264,34 @@ document.addEventListener("DOMContentLoaded", () => {
                     sha: latestCommitSha
                 })
             });
-            if (!createBranchRes.ok) throw new Error("Branch creation rejected by GitHub API.");
+            if (!createBranchRes.ok) throw new Error("Branch creation failed.");
 
-            async function commitRawPayloadToBranch(path, base64Payload, commitMsg) {
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-                const response = await fetch(url, {
+            async function commitToBranch(path, base64Content, commitMsg) {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
                     method: "PUT",
                     headers: githubHeaders,
                     body: JSON.stringify({
                         message: commitMsg,
-                        content: base64Payload,
+                        content: base64Content,
                         branch: cleanBranchName
                     })
                 });
-                return response;
+                if (!res.ok) throw new Error(`Failed to commit file: ${path}`);
+                return res;
             }
 
-            // 1. Upload unified structure to video.json (Zero calls to obsolete titles.json)
-            showStatus("Uploading structure [1/2]: video.json...", "orange");
-            const videoJsonStr = JSON.stringify(videoJson, null, 2);
-            const videoJsonBase64 = btoa(encodeURIComponent(videoJsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
-            const res1 = await commitRawPayloadToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Create structured dubbing description for ${customBase64Id}`);
-            if (!res1.ok) throw new Error(`Failed to write video file configurations.`);
+            // 1. Upload video.json
+            showStatus("Uploading video.json...", "orange");
+            const videoJsonBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(videoJson, null, 2))));
+            await commitToBranch(`videos/${customBase64Id}/translations/video.json`, videoJsonBase64, `Create video configuration for ${customBase64Id}`);
 
-            // 2. Stream the asset media
-            showStatus("Processing data file binary media asset streams [2/2]...", "orange");
-            const rawFileBase64 = await readFileAsBase64(primaryFile);
-            
-            showStatus(`Uploading raw video asset file: ${primaryFile.name}...`, "orange");
-            const res3 = await commitRawPayloadToBranch(`videos/${customBase64Id}/${primaryFile.name}`, rawFileBase64, `Upload raw video media asset file for entry ${customBase64Id}`);
-            if (!res3.ok) throw new Error(`Failed to upload MP4 video file asset.`);
+            // 2. Upload video file
+            showStatus(`Uploading video file: ${primaryFile.name}...`, "orange");
+            const videoFileBase64 = await readFileAsBase64(primaryFile);
+            await commitToBranch(`videos/${customBase64Id}/${primaryFile.name}`, videoFileBase64, `Upload video asset for ${customBase64Id}`);
 
-            // 3. Open Pull Request sequence
-            showStatus("Opening Pull Request sequence...", "orange");
+            // 3. Open Pull Request
+            showStatus("Opening Pull Request...", "orange");
             const prRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls`, {
                 method: "POST",
                 headers: githubHeaders,
@@ -328,30 +299,28 @@ document.addEventListener("DOMContentLoaded", () => {
                     title: `New Unified Video Entry [ID: ${customBase64Id}]`,
                     head: cleanBranchName,
                     base: defaultBranch,
-                    body: `Automated upload setup finalized for entry ID \`${customBase64Id}\` using unified single-file JSON composition formatting.`
+                    body: `Automated upload for video entry ID \`${customBase64Id}\`.`
                 })
             });
 
-            if (prRes.ok) {
-                const prData = await prRes.json();
-                showStatus(`SUCCESS! Video and configurations have been uploaded successfully!<br><br><strong>Pull Request Link:</strong><br><a href="${prData.html_url}" target="_blank">${prData.html_url}</a>`, "green");
-                
-                document.getElementById('primary-video-file').value = '';
-                document.getElementById('primary-lang-tag').value = '';
-                document.getElementById('primary-video-title').value = '';
-                submitBtn.disabled = false;
-            } else {
-                throw new Error("Pull Request generation rejected.");
-            }
+            if (!prRes.ok) throw new Error("Failed to create Pull Request.");
+
+            const prData = await prRes.json();
+            showStatus(`SUCCESS!<br><a href="${prData.html_url}" target="_blank">View Pull Request</a>`, "green");
+
+            // Reset form
+            uploadForm.reset();
+            submitBtn.disabled = false;
 
         } catch (err) {
-            showStatus(`Execution Error: ${err.message}`, "red");
+            showStatus(`Error: ${err.message}`, "red");
             submitBtn.disabled = false;
         }
     });
 
-    function showStatus(msg, color) {
+    function showStatus(msg, color="black") {
         statusDiv.style.display = "block";
+        statusDiv.style.color = color;
         statusDiv.innerHTML = msg;
     }
 });
