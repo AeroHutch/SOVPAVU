@@ -1,6 +1,7 @@
 {
   "dubbing": [
     {"code": "en-NL", "name": "Walking with Bo, part 3 #labrador #dog", "file": "Walking with Bo, part 3 #labrador #dog.mp4", "automatic": false},
+    {"code": "ar-EG", "name": "المشي مع بو، الجزء ٣ #لابرادور #كلب", "file": "Walking with Bo, part 3 #labrador #dog_ar_dubbed.mp4", "automatic": false},
     {"code": "af-ZA", "name": "Stap saam met Bo, deel 3 #labrador #hond", "file": "bo3af.mp4", "automatic": true},
     {"code": "es-419", "name": "Paseando con Bo, parte 3 #labrador #perro", "file": "bo3es.mp4", "automatic": true},
     {"code": "de-DE", "name": "Spaziergang mit Bo, Teil 3 #Labrador #Hund", "file": "bo3de.mp4", "automatic": true},
