@@ -5,8 +5,8 @@
     {"code": "es-419", "name": "Paseando con Bo, parte 3 #labrador #perro", "file": "bo3es.mp4", "automatic": true},
     {"code": "de-DE", "name": "Spaziergang mit Bo, Teil 3 #Labrador #Hund", "file": "bo3de.mp4", "automatic": true},
     {"code": "pt-BR", "name": "Passeando com Bo, parte 3 #labrador #cachorro", "file": "bo3pt.mp4", "automatic": true},
-    {"code": "nl-NL", "name": "Lopen met Bo, deel 3 #labrador #hond", "file": "unavaliable.png", "automatic": true},
-    {"code": "tr-TR", "name": "Bo ile yürüyüş, 3. bölüm #labrador #köpek", "file": "unavaliable.png", "automatic": true},
-    {"code": "ru-RU", "name": "Прогулка с Бо, часть 3 #лабрадор #собака", "file": "unavaliable.png", "automatic": true}
+    {"code": "nl-NL", "name": "Lopen met Bo, deel 3 #labrador #hond", "file": "bo3nl.png", "automatic": true},
+    {"code": "tr-TR", "name": "Bo ile yürüyüş, 3. bölüm #labrador #köpek", "file": "bo3tr.png", "automatic": true},
+    {"code": "ru-RU", "name": "Прогулка с Бо, часть 3 #лабрадор #собака", "file": "bo3ru.png", "automatic": true}
   ]
 }
