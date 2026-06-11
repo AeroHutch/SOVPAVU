@@ -1,6 +1,6 @@
 {
   "dubbing": [
     {"code": "tr-TR", "name":"Beynine İspanyolca işliyorum", "file":"Beynine İspanyolca işliyorum.mp4", "automatic": false},
-    {"code": "en-CX", "name":"I'm implanting Spanish into his brain.", "file": "BİiEN.mp4", "automatic":true} 
+    {"code": "en-US", "name":"I'm implanting Spanish into his brain.", "file": "BİiEN.mp4", "automatic":true} 
   ]
 }
