@@ -1,10 +1,9 @@
 {
   "dubbing": [
-    {
-      "code": "zh-Hant",
-      "name": "我參觀了奧斯曼帝國",
-      "file": "我參觀了奧斯曼帝國 #奧斯曼帝國 #中國 #搞笑.mp4",
-      "automatic": false
-    }
+    {"code": "zh-Hant", "name": "我參觀了奧斯曼帝國", "file": "我參觀了奧斯曼帝國 #奧斯曼帝國 #中國 #搞笑.mp4", "automatic": false},
+    {"code": "en-NL", "name": "I visited the Ottoman Empire", "file": "OttomanEmpire.mp4", "automatic": true},
+    {"code": "tr-TR", "name": "Osmanlı İmparatorluğu'nu ziyaret ettim", "file": "tr_dubbed.mp4", "automatic": false},
+    {"code": "nl-NL", "name": "Ik heb het Ottomaanse Rijk bezocht", "file": "nl_dubbed.mp4", "automatic": false},
+    {"code": "es-ES", "name": "Visité el Imperio Otomano", "file": "es_dubbed.mp4", "automatic": false}
   ]
 }
