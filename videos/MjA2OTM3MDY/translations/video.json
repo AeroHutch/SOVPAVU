@@ -1,6 +1,6 @@
 {
   "dubbing": [
-    { "code": "en-NL", "name": "Walking with Bo, part 2", "file": "bowalking.mp4", "automatic": false },
+    { "code": "en-US", "name": "Walking with Bo, part 2", "file": "bowalking.mp4", "automatic": false },
     { "code": "nl-NL", "name": "Wandelen met Bo, deel 2", "file": "bowalkingnl.mp4", "automatic": false },
     { "code": "es-419", "name": "Caminando con Bo, parte 2", "file": "bowalkinges.mp4", "automatic": false },
     { "code": "de-DE", "name": "Spaziergang mit Bo, Teil 2", "file": "bowalkingde.mp4", "automatic": false },
