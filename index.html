@@ -6,24 +6,93 @@
 <title>Internal Video Player</title>
 <style>
     body { font-family: sans-serif; margin: 20px; }
-    #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); }
+    #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 100; }
     #upload-modal > div { background: #fff; margin: 5% auto; padding: 20px; width: 500px; position: relative; border-radius: 8px; }
     #close-modal { cursor: pointer; position: absolute; top: 10px; right: 10px; font-weight: bold; }
     #status { margin-top: 10px; }
     iframe { border: none; }
+
+    /* Custom Dropdown Styling */
+    .dropdown-container {
+        display: inline-block;
+        position: relative;
+        vertical-align: middle;
+        margin-left: 10px;
+    }
+    .dropdown-selected {
+        display: flex;
+        align-items: center;
+        padding: 6px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        min-width: 200px;
+        user-select: none;
+    }
+    .dropdown-selected::after {
+        content: "";
+        margin-left: auto;
+        border: 5px solid transparent;
+        border-top-color: #333;
+        margin-top: 4px;
+    }
+    .dropdown-options {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 50;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .dropdown-options.show {
+        display: block;
+    }
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        cursor: pointer;
+    }
+    .dropdown-item:hover {
+        background-color: #f0f0f0;
+    }
+    .dropdown-divider {
+        background-color: #eee;
+        padding: 4px 12px;
+        font-size: 11px;
+        color: #777;
+        font-weight: bold;
+        text-transform: uppercase;
+        pointer-events: none;
+    }
+    .flag-icon {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        margin-right: 8px;
+    }
 </style>
 </head>
 <body>
 
 <div id="video-app">
     <div>
-        <label for="language-selector">Choose a language:</label>
-        <select id="language-selector">
-            <option value="">Loading languages...</option>
-        </select>
+        <label>Choose a language:</label>
+        <div class="dropdown-container" id="custom-language-dropdown">
+            <div class="dropdown-selected" id="dropdown-trigger">Loading languages...</div>
+            <div class="dropdown-options" id="dropdown-menu"></div>
+        </div>
     </div>
     
-    <button id="upload-btn">+ Upload New Video</button>
+    <button id="upload-btn" style="margin-top: 15px;">+ Upload New Video</button>
     
     <hr>
     
@@ -76,7 +145,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
-    const languageSelector = document.getElementById('language-selector');
+    // UI elements for custom dropdown
+    const dropdownTrigger = document.getElementById('dropdown-trigger');
+    const dropdownMenu = document.getElementById('dropdown-menu');
+
     const videoFrame = document.getElementById('video-frame');
 
     const uploadBtn = document.getElementById('upload-btn');
@@ -89,6 +161,50 @@ document.addEventListener("DOMContentLoaded", () => {
     const userLang = (navigator.language || 'en').split('-')[0];
 
     let tracksArray = [];
+    let activeSelectedCode = "";
+
+    // Helper to map language tags to a reliable country code for FlagsAPI
+    function getCountryCode(langCode) {
+        if (!langCode) return 'US';
+        
+        // If it includes a region (e.g., nl-NL, pt-PT, en-GB)
+        if (langCode.includes('-')) {
+            const parts = langCode.split('-');
+            // Check if the second part is a valid 2-letter country indicator
+            if (parts[1].length === 2) {
+                return parts[1].toUpperCase();
+            }
+        }
+        
+        // Base mapping fallback for common single language tags
+        const baseMap = {
+            'en': 'US',
+            'nl': 'NL',
+            'pt': 'PT',
+            'ru': 'RU',
+            'es': 'ES',
+            'fr': 'FR',
+            'de': 'DE',
+            'it': 'IT',
+            'ja': 'JP',
+            'zh': 'CN',
+            'ko': 'KR'
+        };
+        
+        const cleanBase = langCode.split('-')[0].toLowerCase();
+        return baseMap[cleanBase] || 'US'; 
+    }
+
+    // Toggle dropdown visibility
+    dropdownTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownMenu.classList.toggle('show');
+    });
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', () => {
+        dropdownMenu.classList.remove('show');
+    });
 
     if (videoId) {
         const videoJsonPath = `./videos/${videoId}/translations/video.json`;
@@ -100,71 +216,91 @@ document.addEventListener("DOMContentLoaded", () => {
                 tracksArray = videoDataBody.dubbing || [];
 
                 if (tracksArray.length === 0) {
-                    languageSelector.innerHTML = '<option>No configurations found</option>';
+                    dropdownTrigger.textContent = 'No configurations found';
                     document.title = `Video: ${videoId}`;
                     return;
                 }
 
                 const originalTarget = tracksArray.find(item => !item.automatic) || tracksArray[0];
 
-                languageSelector.innerHTML = '';
+                dropdownMenu.innerHTML = '';
 
                 const autoOptions = [];
                 const manualOptions = [];
 
                 tracksArray.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.code;
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'dropdown-item';
+                    optionDiv.dataset.value = item.code;
+
+                    // Fetch appropriate country flag
+                    const countryId = getCountryCode(item.code);
+                    const flagImg = document.createElement('img');
+                    flagImg.src = `https://flagsapi.com/${countryId}/shiny/64.png`;
+                    flagImg.className = 'flag-icon';
+                    flagImg.alt = countryId;
 
                     // --- Dynamic Native Locale Translation ---
                     let displayLabel = item.code;
                     try {
-                        // Translates the code into its native tongue (e.g., "nl-NL" -> "Nederlands (Nederland)")
                         const displayNameFormatter = new Intl.DisplayNames([item.code], { type: 'language' });
                         displayLabel = displayNameFormatter.of(item.code);
-                        // Capitalize first letter
                         displayLabel = displayLabel.charAt(0).toUpperCase() + displayLabel.slice(1);
                     } catch (e) {
-                        // Fallback to the title string if Intl isn't behaving
                         displayLabel = item.name;
                     }
 
                     if (item.code === originalTarget.code) {
                         displayLabel += ' (Original)';
                     }
-                    option.textContent = displayLabel;
+                    
+                    const textNode = document.createTextNode(displayLabel);
+                    optionDiv.appendChild(flagImg);
+                    optionDiv.appendChild(textNode);
+
+                    // Setup option click behavior
+                    optionDiv.addEventListener('click', () => {
+                        selectDropdownItem(item.code, displayLabel, flagImg.src);
+                    });
 
                     if (item.automatic === true) {
-                        autoOptions.push(option);
+                        autoOptions.push(optionDiv);
                     } else {
-                        manualOptions.push(option);
+                        manualOptions.push(optionDiv);
                     }
                 });
 
                 // --- MANUAL FIRST ---
-                manualOptions.forEach(opt => languageSelector.appendChild(opt));
+                manualOptions.forEach(opt => dropdownMenu.appendChild(opt));
 
                 if (autoOptions.length > 0 && manualOptions.length > 0) {
-                    const divider = document.createElement('option');
-                    divider.disabled = true;
+                    const divider = document.createElement('div');
+                    divider.className = "dropdown-divider";
                     divider.textContent = "- Automatic -";
-                    languageSelector.appendChild(divider);
+                    dropdownMenu.appendChild(divider);
                 }
 
-                autoOptions.forEach(opt => languageSelector.appendChild(opt));
+                autoOptions.forEach(opt => dropdownMenu.appendChild(opt));
 
+                // Handle default track selection
                 const codeList = tracksArray.map(t => t.code);
-                if (codeList.includes(userLang)) languageSelector.value = userLang;
-                else if (originalTarget) languageSelector.value = originalTarget.code;
-                else languageSelector.value = codeList[0];
+                let targetCode = codeList[0];
+                
+                if (codeList.includes(userLang)) targetCode = userLang;
+                else if (originalTarget) targetCode = originalTarget.code;
 
-                updatePlayer(languageSelector.value);
+                const matchedNode = Array.from(dropdownMenu.querySelectorAll('.dropdown-item')).find(el => el.dataset.value === targetCode);
+                if (matchedNode) {
+                    matchedNode.click();
+                }
             });
 
-        languageSelector.addEventListener('change', e => {
-            if (!e.target.value) return;
-            updatePlayer(e.target.value);
-        });
+        function selectDropdownItem(code, label, flagSrc) {
+            activeSelectedCode = code;
+            dropdownTrigger.innerHTML = `<img src="${flagSrc}" class="flag-icon" alt=""> ${label}`;
+            dropdownMenu.classList.remove('show');
+            updatePlayer(code);
+        }
 
         function updatePlayer(langCode) {
             const matchedTrack = tracksArray.find(t => t.code === langCode);
@@ -194,7 +330,7 @@ document.addEventListener("DOMContentLoaded", () => {
             `;
         }
     } else {
-        languageSelector.innerHTML = '<option>No active parameters located. Launch upload suite to test.</option>';
+        dropdownTrigger.textContent = 'No active parameters located. Launch upload suite to test.';
     }
 
     // --- Modal ---
@@ -228,7 +364,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const primaryLang = document.getElementById('primary-lang-tag').value.trim();
         const primaryTitle = document.getElementById('primary-video-title').value.trim();
         
-        // Note: Ensured this fallback safely catches if element exists or defaults to false
         const autoEl = document.getElementById('primary-automatic-status');
         const isAutomatic = autoEl ? autoEl.value === "true" : false;
 
