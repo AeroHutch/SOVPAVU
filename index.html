@@ -5,24 +5,50 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Internal Video Player</title>
 <style>
-    body { font-family: sans-serif; margin: 20px; }
+    body { font-family: sans-serif; margin: 20px; background-color: #fcfcfc; }
     #upload-modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 100; }
     #upload-modal > div { background: #fff; margin: 5% auto; padding: 20px; width: 500px; position: relative; border-radius: 8px; }
     #close-modal { cursor: pointer; position: absolute; top: 10px; right: 10px; font-weight: bold; }
     #status { margin-top: 10px; }
-    iframe { border: none; }
+    iframe { border: none; display: block; }
 
-    /* New UI Layout Block for Descriptions */
-    #video-description-box {
+    /* Video Details & Meta Layout Card */
+    #video-meta-box {
         margin-top: 15px;
-        padding: 15px;
-        background: #f9f9f9;
-        border-left: 4px solid #0076ff;
+        padding: 20px;
+        background: #fff;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
         max-width: 640px;
         box-sizing: border-box;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    #video-description-box h3 { margin: 0 0 8px 0; font-size: 16px; }
-    #video-description-box p { margin: 0; font-size: 14px; color: #444; line-height: 1.4; }
+    
+    /* Dynamic Channel Styling Indicator */
+    #channel-badge {
+        display: inline-flex;
+        align-items: center;
+        font-weight: bold;
+        color: #333;
+        font-size: 15px;
+        margin-bottom: 12px;
+    }
+    #channel-icon {
+        width: 32px;
+        height: 32px;
+        background-color: #0076ff;
+        color: white;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        margin-right: 10px;
+        text-transform: uppercase;
+    }
+
+    #desc-title { margin: 10px 0 6px 0; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+    #desc-content { margin: 0; font-size: 14px; color: #222; line-height: 1.5; white-space: pre-wrap; }
 
     /* Custom Dropdown Styling */
     .dropdown-container {
@@ -116,7 +142,12 @@
         allowfullscreen>
     </iframe>
 
-    <div id="video-description-box" style="display: none;">
+    <div id="video-meta-box" style="display: none;">
+        <div id="channel-badge">
+            <div id="channel-icon">?</div>
+            <span id="channel-name">Unknown Channel</span>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 10px 0;">
         <h3 id="desc-title">Description</h3>
         <p id="desc-content"></p>
     </div>
@@ -167,8 +198,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const videoFrame = document.getElementById('video-frame');
     
-    // Description element references
-    const descriptionBox = document.getElementById('video-description-box');
+    // Metadata Element Hooks
+    const metaBox = document.getElementById('video-meta-box');
+    const channelNameText = document.getElementById('channel-name');
+    const channelIconDiv = document.getElementById('channel-icon');
     const descContent = document.getElementById('desc-content');
 
     const uploadBtn = document.getElementById('upload-btn');
@@ -304,24 +337,23 @@ document.addEventListener("DOMContentLoaded", () => {
             const currentTitle = matchedTrack ? matchedTrack.name : `Video: ${videoId}`;
             const currentVideoFile = matchedTrack ? matchedTrack.file : 'default.mp4';
             
-            // Extract descriptions and subtitles fields conditionally from the track object
-            const currentDescription = matchedTrack && matchedTrack.description ? matchedTrack.description : '';
+            // Dynamic Metadata Extractions
+            const currentDescription = matchedTrack && matchedTrack.description ? matchedTrack.description : 'No description provided.';
             const currentSubtitles = matchedTrack && matchedTrack.subtitles ? matchedTrack.subtitles : '';
+            const currentChannel = matchedTrack && matchedTrack.channel ? matchedTrack.channel : 'Unknown Channel';
 
             const fullVideoPath = `./videos/${videoId}/${currentVideoFile}`;
             const fullSubtitlesPath = currentSubtitles ? `./videos/${videoId}/${currentSubtitles}` : '';
 
             document.title = currentTitle;
 
-            // Render descriptive metadata blocks contextually below the application window
-            if (currentDescription) {
-                descContent.textContent = currentDescription;
-                descriptionBox.style.display = "block";
-            } else {
-                descriptionBox.style.display = "none";
-            }
+            // Render details into the metadata card component
+            channelNameText.textContent = currentChannel;
+            channelIconDiv.textContent = currentChannel.charAt(0); // Uses first letter of channel name as avatar placeholder
+            descContent.textContent = currentDescription;
+            metaBox.style.display = "block";
 
-            // Build native web text track definitions if subtitles are mapped
+            // Track Element Processing for Subtitles
             let trackTag = '';
             if (fullSubtitlesPath) {
                 trackTag = `<track src="${fullSubtitlesPath}" kind="subtitles" srclang="${langCode}" label="${langCode.toUpperCase()}" default>`;
