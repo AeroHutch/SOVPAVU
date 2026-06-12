@@ -1,4 +1,5 @@
 {
+  "channel":"BoTheLabrador",
   "dubbing": [
     { "code": "en-US", "name": "Walking with Bo, part 2", "file": "bowalking.mp4", "automatic": false },
     { "code": "nl-NL", "name": "Wandelen met Bo, deel 2", "file": "bowalkingnl.mp4", "automatic": false },
