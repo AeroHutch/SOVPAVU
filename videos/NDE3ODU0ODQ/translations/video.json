@@ -1,10 +1,6 @@
 {
   "dubbing": [
-    {
-      "code": "zh-Hant",
-      "name": "多麼現代的科技！",
-      "file": "1000078356.mp4",
-      "automatic": false
-    }
+    {"code": "zh-Hant", "name": "多麼現代的科技！", "file": "1000078356.mp4", "subtitles": "subtitles.vtt", "automatic": false},
+    {"code": "en-US", "name": "What modern technology!", "file": "wmtEn.mp4", "automatic": true}
   ]
 }
