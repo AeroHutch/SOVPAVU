@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Hub</title>
+<style>
+    body { font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+    header { display: flex; gap: 20px; align-items: center; border-bottom: 2px solid #ccc; padding-bottom: 15px; margin-bottom: 20px; }
+    .video-grid { display: flex; flex-wrap: wrap; gap: 20px; }
+    .video-card { width: 220px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; text-decoration: none; color: black; }
+    .video-card:hover { background: #f0f0f0; }
+    .thumb-box { width: 100%; height: 120px; background: black; }
+    .thumb-box video { width: 100%; height: 100%; object-fit: cover; }
+    iframe { width: 100%; height: 450px; border: 1px solid #000; margin-top: 15px; }
+    .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+    <a href="https://aerohutch.github.io/SOVPAVU/">Home</a>
+    <div>
+        <input type="text" id="search-bar" placeholder="Search videos...">
+        <button id="search-btn">Search</button>
+    </div>
+</header>
+
+<div id="home-hub">
+    <h3>Available Videos</h3>
+    <div class="video-grid" id="video-grid-container">Loading videos...</div>
+</div>
+
+<div id="video-app" class="hidden">
+    <a href="https://aerohutch.github.io/SOVPAVU/">Back to Home</a>
+    <div style="margin-top: 15px;">
+        <label>Select Language: </label>
+        <select id="lang-selector"></select>
+    </div>
+    <iframe id="video-frame" allowfullscreen></iframe>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const owner = "AeroHutch"; 
+    const repo = "SOVPAVU";
+    const baseUrl = "https://aerohutch.github.io/SOVPAVU/";
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get('id');
+
+    const homeHub = document.getElementById('home-hub');
+    const videoApp = document.getElementById('video-app');
+    const videoGridContainer = document.getElementById('video-grid-container');
+    const searchBar = document.getElementById('search-bar');
+    const searchBtn = document.getElementById('search-btn');
+    const langSelector = document.getElementById('lang-selector');
+    const videoFrame = document.getElementById('video-frame');
+
+    let globalVideos = [];
+    let tracksArray = [];
+
+    if (!videoId) {
+        homeHub.style.display = 'block';
+        videoApp.style.display = 'none';
+        loadHomepage();
+    } else {
+        homeHub.style.display = 'none';
+        videoApp.style.display = 'block';
+        loadPlayerPage(videoId);
+    }
+
+    async function loadHomepage() {
+        try {
+            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/videos`);
+            if (!res.ok) throw new Error("Could not read directories.");
+            const directories = await res.json();
+            const folderIds = directories.filter(item => item.type === "dir").map(item => item.name);
+
+            videoGridContainer.innerHTML = "";
+            
+            for (let id of folderIds) {
+                try {
+                    const configRes = await fetch(`${baseUrl}videos/${id}/translations/video.json`);
+                    if (configRes.ok) {
+                        const data = await configRes.json();
+                        const primaryTrack = data.dubbing[0];
+                        globalVideos.push({
+                            id: id,
+                            title: primaryTrack.name,
+                            file: primaryTrack.file
+                        });
+                    }
+                } catch (e) { console.log(e); }
+            }
+
+            globalVideos.sort(() => Math.random() - 0.5);
+            renderGrid(globalVideos);
+
+        } catch (err) {
+            videoGridContainer.innerHTML = "Error loading videos: " + err.message;
+        }
+    }
+
+    function renderGrid(videos) {
+        videoGridContainer.innerHTML = "";
+        if (videos.length === 0) {
+            videoGridContainer.innerHTML = "No videos found.";
+            return;
+        }
+        videos.forEach(v => {
+            const card = document.createElement('a');
+            card.className = "video-card";
+            card.href = `${baseUrl}index.html?id=${v.id}`;
+            card.innerHTML = `
+                <div class="thumb-box">
+                    <video src="${baseUrl}videos/${v.id}/${v.file}" preload="metadata" muted></video>
+                </div>
+                <p><strong>${v.title}</strong></p>
+            `;
+            videoGridContainer.appendChild(card);
+        });
+    }
+
+    searchBtn.addEventListener('click', () => {
+        const query = searchBar.value.toLowerCase();
+        const filtered = globalVideos.filter(v => v.title.toLowerCase().includes(query));
+        renderGrid(filtered);
+    });
+
+    function loadPlayerPage(id) {
+        fetch(`${baseUrl}videos/${id}/translations/video.json`)
+            .then(res => res.json())
+            .then(data => {
+                tracksArray = data.dubbing || [];
+                langSelector.innerHTML = "";
+
+                tracksArray.forEach(track => {
+                    const opt = document.createElement('option');
+                    opt.value = track.code;
+                    opt.textContent = `${track.name} (${track.code})`;
+                    langSelector.appendChild(opt);
+                });
+
+                langSelector.addEventListener('change', (e) => {
+                    updatePlayerSrc(id, e.target.value);
+                });
+
+                if(tracksArray.length > 0) {
+                    updatePlayerSrc(id, tracksArray[0].code);
+                }
+            })
+            .catch(() => {
+                videoGridContainer.innerHTML = "Error loading video configuration.";
+            });
+    }
+
+    function updatePlayerSrc(id, langCode) {
+        const track = tracksArray.find(t => t.code === langCode);
+        if (!track) return;
+
+        videoFrame.srcdoc = `
+            <body style="margin:0; background:black;">
+                <video controls autoplay style="width:100%; height:100%;">
+                    <source src="${baseUrl}videos/${id}/${track.file}" type="video/mp4">
+                </video>
+            </body>
+        `;
+    }
+});
+</script>
+</body>
+</html>
