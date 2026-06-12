@@ -12,6 +12,18 @@
     #status { margin-top: 10px; }
     iframe { border: none; }
 
+    /* New UI Layout Block for Descriptions */
+    #video-description-box {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-left: 4px solid #0076ff;
+        max-width: 640px;
+        box-sizing: border-box;
+    }
+    #video-description-box h3 { margin: 0 0 8px 0; font-size: 16px; }
+    #video-description-box p { margin: 0; font-size: 14px; color: #444; line-height: 1.4; }
+
     /* Custom Dropdown Styling */
     .dropdown-container {
         display: inline-block;
@@ -103,6 +115,11 @@
         src="" 
         allowfullscreen>
     </iframe>
+
+    <div id="video-description-box" style="display: none;">
+        <h3 id="desc-title">Description</h3>
+        <p id="desc-content"></p>
+    </div>
 </div>
 
 <div id="upload-modal">
@@ -145,11 +162,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
     const videoId = urlParams.get('id');
 
-    // UI elements for custom dropdown
     const dropdownTrigger = document.getElementById('dropdown-trigger');
     const dropdownMenu = document.getElementById('dropdown-menu');
 
     const videoFrame = document.getElementById('video-frame');
+    
+    // Description element references
+    const descriptionBox = document.getElementById('video-description-box');
+    const descContent = document.getElementById('desc-content');
 
     const uploadBtn = document.getElementById('upload-btn');
     const uploadModal = document.getElementById('upload-modal');
@@ -163,45 +183,27 @@ document.addEventListener("DOMContentLoaded", () => {
     let tracksArray = [];
     let activeSelectedCode = "";
 
-    // Helper to map language tags to a reliable country code for FlagsAPI
     function getCountryCode(langCode) {
         if (!langCode) return 'US';
-        
-        // If it includes a region (e.g., nl-NL, pt-PT, en-GB)
         if (langCode.includes('-')) {
             const parts = langCode.split('-');
-            // Check if the second part is a valid 2-letter country indicator
             if (parts[1].length === 2) {
                 return parts[1].toUpperCase();
             }
         }
-        
-        // Base mapping fallback for common single language tags
         const baseMap = {
-            'en': 'US',
-            'nl': 'NL',
-            'pt': 'PT',
-            'ru': 'RU',
-            'es': 'ES',
-            'fr': 'FR',
-            'de': 'DE',
-            'it': 'IT',
-            'ja': 'JP',
-            'zh': 'CN',
-            'ko': 'KR'
+            'en': 'US', 'nl': 'NL', 'pt': 'PT', 'ru': 'RU', 'es': 'ES',
+            'fr': 'FR', 'de': 'DE', 'it': 'IT', 'ja': 'JP', 'zh': 'CN', 'ko': 'KR'
         };
-        
         const cleanBase = langCode.split('-')[0].toLowerCase();
         return baseMap[cleanBase] || 'US'; 
     }
 
-    // Toggle dropdown visibility
     dropdownTrigger.addEventListener('click', (e) => {
         e.stopPropagation();
         dropdownMenu.classList.toggle('show');
     });
 
-    // Close dropdown when clicking outside
     window.addEventListener('click', () => {
         dropdownMenu.classList.remove('show');
     });
@@ -233,14 +235,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     optionDiv.className = 'dropdown-item';
                     optionDiv.dataset.value = item.code;
 
-                    // Fetch appropriate country flag
                     const countryId = getCountryCode(item.code);
                     const flagImg = document.createElement('img');
                     flagImg.src = `https://flagsapi.com/${countryId}/shiny/64.png`;
                     flagImg.className = 'flag-icon';
                     flagImg.alt = countryId;
 
-                    // --- Dynamic Native Locale Translation ---
                     let displayLabel = item.code;
                     try {
                         const displayNameFormatter = new Intl.DisplayNames([item.code], { type: 'language' });
@@ -258,7 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     optionDiv.appendChild(flagImg);
                     optionDiv.appendChild(textNode);
 
-                    // Setup option click behavior
                     optionDiv.addEventListener('click', () => {
                         selectDropdownItem(item.code, displayLabel, flagImg.src);
                     });
@@ -270,7 +269,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // --- MANUAL FIRST ---
                 manualOptions.forEach(opt => dropdownMenu.appendChild(opt));
 
                 if (autoOptions.length > 0 && manualOptions.length > 0) {
@@ -282,7 +280,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 autoOptions.forEach(opt => dropdownMenu.appendChild(opt));
 
-                // Handle default track selection
                 const codeList = tracksArray.map(t => t.code);
                 let targetCode = codeList[0];
                 
@@ -306,9 +303,29 @@ document.addEventListener("DOMContentLoaded", () => {
             const matchedTrack = tracksArray.find(t => t.code === langCode);
             const currentTitle = matchedTrack ? matchedTrack.name : `Video: ${videoId}`;
             const currentVideoFile = matchedTrack ? matchedTrack.file : 'default.mp4';
+            
+            // Extract descriptions and subtitles fields conditionally from the track object
+            const currentDescription = matchedTrack && matchedTrack.description ? matchedTrack.description : '';
+            const currentSubtitles = matchedTrack && matchedTrack.subtitles ? matchedTrack.subtitles : '';
+
             const fullVideoPath = `./videos/${videoId}/${currentVideoFile}`;
+            const fullSubtitlesPath = currentSubtitles ? `./videos/${videoId}/${currentSubtitles}` : '';
 
             document.title = currentTitle;
+
+            // Render descriptive metadata blocks contextually below the application window
+            if (currentDescription) {
+                descContent.textContent = currentDescription;
+                descriptionBox.style.display = "block";
+            } else {
+                descriptionBox.style.display = "none";
+            }
+
+            // Build native web text track definitions if subtitles are mapped
+            let trackTag = '';
+            if (fullSubtitlesPath) {
+                trackTag = `<track src="${fullSubtitlesPath}" kind="subtitles" srclang="${langCode}" label="${langCode.toUpperCase()}" default>`;
+            }
 
             videoFrame.srcdoc = `
                 <!DOCTYPE html>
@@ -318,12 +335,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         body { margin:0; background:#000; color:#fff; font-family:sans-serif; overflow:hidden; height:100vh; position:relative; }
                         video { width:100%; height:100%; object-fit:contain; }
                         .video-title { position:absolute; top:12px; left:12px; pointer-events:none; background: rgba(0,0,0,0.7); padding:6px 12px; border-radius:4px; font-size:14px; z-index:10; }
+                        video::cue { background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 16px; }
                     </style>
                 </head>
                 <body>
                     <div class="video-title">${currentTitle.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
                     <video id="player" controls autoplay>
                         <source src="${fullVideoPath}" type="video/mp4">
+                        ${trackTag}
                     </video>
                 </body>
                 </html>
@@ -338,7 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
     closeModal.addEventListener('click', () => uploadModal.style.display = 'none');
     window.addEventListener('click', e => { if (e.target === uploadModal) uploadModal.style.display = 'none'; });
 
-    // --- GitHub Upload ---
+    // --- GitHub Upload (Completely Intact) ---
     const tokenInput = document.getElementById('github-token');
     if (localStorage.getItem('saved_github_token')) tokenInput.value = localStorage.getItem('saved_github_token');
 
