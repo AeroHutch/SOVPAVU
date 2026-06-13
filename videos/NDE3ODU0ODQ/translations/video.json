@@ -1,6 +1,9 @@
 {
   "dubbing": [
     {"code": "zh-Hant", "name": "多麼現代的科技！", "file": "1000078356.mp4", "subtitles": "subtitles.vtt", "automatic": false},
-    {"code": "en-US", "name": "What modern technology!", "file": "wmtEn.mp4", "automatic": true}
+    {"code": "en-US", "name": "What modern technology!", "file": "wmtEn.mp4", "automatic": true},
+    {"code": "nl-NL", "name": "Wat een moderne technologie!", "file": "1000078356_nl_dubbed.mp4", "automatic": false},
+    {"code": "tr-TR", "name": "Ne kadar modern bir teknoloji!", "file": "1000078356_tr_dubbed.mp4", "automatic": false},
+    {"code": "es-ES", "name": "¡Qué tecnología moderna!", "file": "1000078356_es_dubbed.mp4", "automatic": false}
   ]
 }
