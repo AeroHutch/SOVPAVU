@@ -59,18 +59,28 @@
     .video-item:hover {
         background: #f0f0f0;
     }
-    .video-thumb {
+    .video-thumb-container {
         width: 100px;
         height: 56px;
         background: #4a5568;
         border-radius: 4px;
+        overflow: hidden;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
+    }
+    .video-thumb-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .video-thumb-fallback {
         color: #fff;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: bold;
         text-transform: uppercase;
+        position: absolute;
     }
     .video-info {
         flex: 1;
@@ -285,6 +295,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const owner = "AeroHutch"; 
     const repo = "SOVPAVU";
 
+    // --- Dynamic First-Frame Thumbnail Generator ---
+    function generateFirstFrameThumbnail(videoUrl, imgElement, fallbackTextElement) {
+        const video = document.createElement('video');
+        video.src = videoUrl;
+        video.crossOrigin = "anonymous"; // Prevents tainted canvas errors if hosted across domains
+        video.currentTime = 0.1; // Seek slightly past 0 to ensure accurate decoding of a valid video frame
+        video.muted = true;
+        video.playsInline = true;
+
+        video.addEventListener('loadeddata', () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 160;
+            canvas.height = video.videoHeight || 90;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            try {
+                const dataUrl = canvas.toDataURL();
+                imgElement.src = dataUrl;
+                fallbackTextElement.style.display = "none"; // Hide text when frame generation completes
+            } catch (e) {
+                console.error("Canvas context generation error:", e);
+            }
+        });
+    }
+
     // --- Dynamic Sidebar Server Engine ---
     async function loadServerVideosSidebar() {
         const token = localStorage.getItem('saved_github_token') || "";
@@ -312,19 +349,32 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!metaRes.ok) continue;
                     
                     const metaData = await metaRes.json();
-                    const primaryTrack = (metaData.dubbing && metaData.dubbing[0]) || { name: `ID: ${dir.name}`, code: "Unknown" };
+                    const primaryTrack = (metaData.dubbing && metaData.dubbing[0]) || null;
+                    
+                    if (!primaryTrack) continue;
 
                     const item = document.createElement('div');
                     item.className = 'video-item';
                     if (videoId === dir.name) item.style.background = "#e1e4e8"; // Highlight active selection
 
                     item.innerHTML = `
-                        <div class="video-thumb">${primaryTrack.code}</div>
+                        <div class="video-thumb-container">
+                            <span class="video-thumb-fallback">${primaryTrack.code.toUpperCase()}</span>
+                            <img class="video-thumb-img" alt="">
+                        </div>
                         <div class="video-info">
                             <div class="video-item-title">${primaryTrack.name}</div>
                             <div class="video-item-meta">ID: ${dir.name}</div>
                         </div>
                     `;
+
+                    const targetImg = item.querySelector('.video-thumb-img');
+                    const targetFallback = item.querySelector('.video-thumb-fallback');
+                    const actualVideoAssetUrl = `./videos/${dir.name}/${primaryTrack.file}`;
+
+                    // Process dynamic rendering for individual first-frame extraction
+                    generateFirstFrameThumbnail(actualVideoAssetUrl, targetImg, targetFallback);
+
                     item.addEventListener('click', () => {
                         window.location.search = `?id=${dir.name}`;
                     });
