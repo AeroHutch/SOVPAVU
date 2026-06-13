@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Tree and File Viewer</title>
+<style>
+    body {
+        font-family: monospace;
+        background-color: #ffffff;
+        color: #333333;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        gap: 40px;
+    }
+
+    /* Left Sidebar Tree */
+    #sidebar {
+        width: 300px;
+        flex-shrink: 0;
+    }
+
+    h3 {
+        font-family: sans-serif;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 8px;
+        margin-top: 0;
+    }
+
+    .tree-node { margin-left: 15px; }
+
+    .tree-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+        cursor: pointer;
+        user-select: none;
+        border-radius: 3px;
+    }
+
+    .tree-item:hover { background-color: #f0f0f0; }
+    .tree-children.hidden { display: none; }
+    .arrow { font-size: 10px; width: 12px; color: #888; }
+
+    /* Right Preview Zone */
+    #preview-zone {
+        flex-grow: 1;
+        border-left: 1px solid #ddd;
+        padding-left: 20px;
+    }
+
+    /* Capped Media Sizing */
+    video {
+        width: 100%;
+        max-width: 640px;
+        max-height: 360px;
+        background: #000;
+        display: block;
+        border-radius: 4px;
+    }
+
+    pre {
+        background: #f8f9fa;
+        border: 1px solid #ddd;
+        padding: 15px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-width: 640px;
+        max-height: 360px;
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h3>Project Files</h3>
+    <div id="tree-root">Loading repository...</div>
+</div>
+
+<div id="preview-zone">
+    <h3>File Preview</h3>
+    <div id="viewer-content">
+        <p style="color: #888;">Select a file from the tree to view it here.</p>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+    const treeRoot = document.getElementById('tree-root');
+    const viewerContent = document.getElementById('viewer-content');
+    
+    const owner = "AeroHutch"; 
+    const repo = "SOVPAVU";
+
+    function previewFile(fileUrl, fileName) {
+        viewerContent.innerHTML = `<p><strong>Loading:</strong> ${fileName}...</p>`;
+
+        if (fileName.endsWith('.mp4')) {
+            viewerContent.innerHTML = `
+                <p><strong>Playing:</strong> ${fileName}</p>
+                <video controls autoplay>
+                    <source src="${fileUrl}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            `;
+        } 
+        else if (fileName.endsWith('.json') || fileName.endsWith('.vtt')) {
+            fetch(fileUrl)
+                .then(res => res.text())
+                .then(text => {
+                    viewerContent.innerHTML = `
+                        <p><strong>Viewing text data:</strong> ${fileName}</p>
+                        <pre>${escapeHTML(text)}</pre>
+                    `;
+                })
+                .catch(() => {
+                    viewerContent.innerHTML = `<p style="color:red;">Error loading text content.</p>`;
+                });
+        } 
+        else {
+            viewerContent.innerHTML = `<p>Cannot preview this file type directly, but you can access it here: <a href="${fileUrl}" target="_blank">Raw Link</a></p>`;
+        }
+    }
+
+    function escapeHTML(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/videos`);
+        const items = await res.json();
+        const folders = items.filter(i => i.type === "dir");
+
+        treeRoot.innerHTML = ""; 
+
+        for (const folder of folders) {
+            const folderDiv = document.createElement('div');
+            folderDiv.className = 'tree-node';
+            
+            folderDiv.innerHTML = `
+                <div class="tree-item folder-btn">
+                    <span class="arrow">[+]</span> <strong>[DIR] ${folder.name}</strong>
+                </div>
+                <div class="tree-children hidden"></div>
+            `;
+            
+            treeRoot.appendChild(folderDiv);
+
+            const folderBtn = folderDiv.querySelector('.folder-btn');
+            const childrenContainer = folderDiv.querySelector('.tree-children');
+
+            folderBtn.addEventListener('click', async () => {
+                const arrow = folderBtn.querySelector('.arrow');
+                const isHidden = childrenContainer.classList.toggle('hidden');
+                arrow.textContent = isHidden ? '[+]' : '[-]';
+
+                if (!isHidden && childrenContainer.children.length === 0) {
+                    childrenContainer.innerHTML = "<div style='color:#888; padding-left:15px;'>Loading...</div>";
+                    
+                    try {
+                        const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/videos/${folder.name}`);
+                        const files = await fileRes.json();
+                        childrenContainer.innerHTML = ""; 
+
+                        for (const file of files) {
+                            const itemDiv = document.createElement('div');
+                            itemDiv.className = 'tree-node';
+
+                            if (file.type === "dir") {
+                                itemDiv.innerHTML = `
+                                    <div class="tree-item subfolder-btn"><span class="arrow">[+]</span> [DIR] ${file.name}</div>
+                                    <div class="tree-children hidden"></div>
+                                `;
+                                childrenContainer.appendChild(itemDiv);
+
+                                const subBtn = itemDiv.querySelector('.subfolder-btn');
+                                const subContainer = itemDiv.querySelector('.tree-children');
+
+                                subBtn.addEventListener('click', async (e) => {
+                                    e.stopPropagation();
+                                    const subArrow = subBtn.querySelector('.arrow');
+                                    const subHidden = subContainer.classList.toggle('hidden');
+                                    subArrow.textContent = subHidden ? '[+]' : '[-]';
+
+                                    if (!subHidden && subContainer.children.length === 0) {
+                                        const subRes = await fetch(file.url);
+                                        const subFiles = await subRes.json();
+                                        subContainer.innerHTML = "";
+                                        subFiles.forEach(sFile => {
+                                            const leaf = document.createElement('div');
+                                            leaf.className = 'tree-item';
+                                            leaf.style.paddingLeft = "20px";
+                                            leaf.innerHTML = `[FILE] ${sFile.name}`;
+                                            leaf.addEventListener('click', (event) => {
+                                                event.stopPropagation();
+                                                previewFile(sFile.download_url, sFile.name);
+                                            });
+                                            subContainer.appendChild(leaf);
+                                        });
+                                    }
+                                });
+                            } else {
+                                itemDiv.innerHTML = `<div class="tree-item" style="padding-left:15px;">[FILE] ${file.name}</div>`;
+                                itemDiv.querySelector('.tree-item').addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    previewFile(file.download_url, file.name);
+                                });
+                                childrenContainer.appendChild(itemDiv);
+                            }
+                        }
+
+                    } catch (e) {
+                        childrenContainer.innerHTML = "<div style='color:red; padding-left:15px;'>Error.</div>";
+                    }
+                }
+            });
+        }
+    } catch (err) {
+        treeRoot.innerHTML = "<span style='color:red;'>Failed to load repository.</span>";
+    }
+});
+</script>
+
+</body>
+</html>
