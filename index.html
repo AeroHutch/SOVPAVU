@@ -12,6 +12,89 @@
     #status { margin-top: 10px; }
     iframe { border: none; display: block; }
 
+    /* Flex layout to hold player and sidebar */
+    .main-container {
+        display: flex;
+        gap: 20px;
+        max-width: 1000px;
+        align-items: flex-start;
+    }
+
+    .player-section {
+        flex: 1;
+        max-width: 640px;
+    }
+
+    /* Sidebar Styling for other videos */
+    .sidebar-section {
+        width: 300px;
+        background: #fff;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 15px;
+        box-sizing: border-box;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .sidebar-section h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 16px;
+        color: #333;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+    }
+    #sidebar-video-list {
+        max-height: 450px;
+        overflow-y: auto;
+    }
+    .video-item {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    .video-item:hover {
+        background: #f0f0f0;
+    }
+    .video-thumb {
+        width: 100px;
+        height: 56px;
+        background: #4a5568;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .video-info {
+        flex: 1;
+    }
+    .video-item-title {
+        font-size: 13px;
+        font-weight: bold;
+        margin: 0 0 4px 0;
+        color: #222;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .video-item-meta {
+        font-size: 11px;
+        color: #666;
+    }
+    .sidebar-status {
+        font-size: 13px;
+        color: #777;
+        font-style: italic;
+    }
+
     /* Video Details & Meta Layout Card */
     #video-meta-box {
         padding: 20px;
@@ -21,8 +104,8 @@
         max-width: 640px;
         box-sizing: border-box;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-top: 15px;
     }
-
 
     #desc-title { margin: 10px 0 6px 0; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
     #desc-content { margin: 0; font-size: 14px; color: #222; line-height: 1.5; white-space: pre-wrap; }
@@ -111,17 +194,28 @@
     
     <hr>
     
-    <iframe 
-        id="video-frame" 
-        width="640" 
-        height="360" 
-        src="" 
-        allowfullscreen>
-    </iframe>
+    <div class="main-container">
+        <div class="player-section">
+            <iframe 
+                id="video-frame" 
+                width="640" 
+                height="360" 
+                src="" 
+                allowfullscreen>
+            </iframe>
 
-    <div id="video-meta-box" style="display: none;">
-        <h3 id="desc-title">Description</h3>
-        <p id="desc-content"></p>
+            <div id="video-meta-box" style="display: none;">
+                <h3 id="desc-title">Description</h3>
+                <p id="desc-content"></p>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>Server Videos</h3>
+            <div id="sidebar-video-list">
+                <div class="sidebar-status">Loading server repository...</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -181,10 +275,71 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusDiv = document.getElementById('status');
     const submitBtn = document.getElementById('submit-btn');
 
+    const sidebarList = document.getElementById('sidebar-video-list');
+
     const userLang = (navigator.language || 'en').split('-')[0];
 
     let tracksArray = [];
     let activeSelectedCode = "";
+
+    const owner = "AeroHutch"; 
+    const repo = "SOVPAVU";
+
+    // --- Dynamic Sidebar Server Engine ---
+    async function loadServerVideosSidebar() {
+        const token = localStorage.getItem('saved_github_token') || "";
+        const headers = token ? { "Authorization": `token ${token}` } : {};
+
+        try {
+            // Read directories inside "videos/"
+            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/videos`, { headers });
+            if (!res.ok) throw new Error("Could not access directory.");
+            
+            const contents = await res.json();
+            const directories = contents.filter(item => item.type === "dir");
+
+            if (directories.length === 0) {
+                sidebarList.innerHTML = '<div class="sidebar-status">No uploaded videos found.</div>';
+                return;
+            }
+
+            sidebarList.innerHTML = ''; // Clear status loader
+
+            // Fetch video metadata for each valid folder
+            for (const dir of directories) {
+                try {
+                    const metaRes = await fetch(`./videos/${dir.name}/translations/video.json`);
+                    if (!metaRes.ok) continue;
+                    
+                    const metaData = await metaRes.json();
+                    const primaryTrack = (metaData.dubbing && metaData.dubbing[0]) || { name: `ID: ${dir.name}`, code: "Unknown" };
+
+                    const item = document.createElement('div');
+                    item.className = 'video-item';
+                    if (videoId === dir.name) item.style.background = "#e1e4e8"; // Highlight active selection
+
+                    item.innerHTML = `
+                        <div class="video-thumb">${primaryTrack.code}</div>
+                        <div class="video-info">
+                            <div class="video-item-title">${primaryTrack.name}</div>
+                            <div class="video-item-meta">ID: ${dir.name}</div>
+                        </div>
+                    `;
+                    item.addEventListener('click', () => {
+                        window.location.search = `?id=${dir.name}`;
+                    });
+                    sidebarList.appendChild(item);
+                } catch(e) {
+                    // Ignore broken or mismatched tracking file directories gracefully
+                }
+            }
+        } catch (err) {
+            sidebarList.innerHTML = '<div class="sidebar-status">Provide a token / add content to read files.</div>';
+        }
+    }
+
+    // Initialize sidebar loader execution
+    loadServerVideosSidebar();
 
     function getCountryCode(langCode) {
         if (!langCode) return 'US';
@@ -371,9 +526,6 @@ document.addEventListener("DOMContentLoaded", () => {
     uploadForm.addEventListener('submit', async e => {
         e.preventDefault();
 
-        const owner = "AeroHutch"; 
-        const repo = "SOVPAVU";
-
         const token = tokenInput.value.trim();
         localStorage.setItem('saved_github_token', token);
 
@@ -474,6 +626,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             uploadForm.reset();
             submitBtn.disabled = false;
+            
+            // Refresh sidebar list context upon successful workflow entry
+            loadServerVideosSidebar();
 
         } catch (err) {
             showStatus(`Error: ${err.message}`, "red");
