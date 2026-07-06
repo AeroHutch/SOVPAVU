@@ -8,6 +8,6 @@
     { "code": "tr-TR", "name": "Turkish (Turkey)" },
     { "code": "ru-RU", "name": "Russian (Russia)" },
     { "code": "ar-EG", "name": "Arabic (Egypt)" },
-    { "code": "fa-AF", "name": "Persian (Afghanistan)" },
+    { "code": "fa-AF", "name": "Persian (Afghanistan)" }
   ]
 }
