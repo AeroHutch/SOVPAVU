@@ -6,6 +6,8 @@
     { "code": "pt-BR", "name": "Portuguese (Brazil)" },
     { "code": "nl-NL", "name": "Dutch (Netherlands)" },
     { "code": "tr-TR", "name": "Turkish (Turkey)" },
-    { "code": "ru-RU", "name": "Russian (Russia)" }
+    { "code": "ru-RU", "name": "Russian (Russia)" },
+    { "code": "ar-EG", "name": "Arabic (Egypt)" },
+    { "code": "fa-AF", "name": "Persian (Afghanistan)" },
   ]
 }
