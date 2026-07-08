@@ -7,6 +7,9 @@
     { "code": "pt-BR", "name": "Caminhando com Bo, parte 2", "file": "bowalkingbr.mp4", "automatic": false },
     { "code": "af-ZA", "name": "Stap saam met Bo, deel 2", "file": "bowalkingaf.mp4", "description":"Ons stap saam met Bo", "automatic": true },
     { "code": "tr-TR", "name": "Bo ile Yürüyüş, Bölüm 2", "file": "bowalkingtr.mp4", "description":"Bo ile birlikte yürüyoruz", "automatic": true },
-    { "code": "ru-RU", "name": "Прогулка с Бо, часть 2", "file": "bowalkingru.mp4", "description":"Мы идём вместе с Бо", "automatic": true }
+    { "code": "ru-RU", "name": "Прогулка с Бо, часть 2", "file": "bowalkingru.mp4", "description":"Мы идём вместе с Бо", "automatic": true },
+    { "code": "ar-EG", "name": "المشي مع بو، الجزء الثاني", "file": "output_dubbed_ar.mp4", "description":"نمشي معًا مع بو", "automatic": true },
+    { "code": "fa-AF", "name": "قدم زدن با بو، قسمت 2", "file": "output_dubbed_fa.mp4", "description":"ما با بو قدم می‌زنیم", "automatic": true },
+    { "code": "el-GR", "name": "Περπατώντας με τον Μπο, μέρος 2ο", "file": "output_dubbed_el.mp4", "description":"Περπατάμε μαζί με τον Μπ", "automatic": true }
   ]
 }
