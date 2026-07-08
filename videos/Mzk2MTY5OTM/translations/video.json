@@ -1,10 +1,5 @@
 {
   "dubbing": [
-    {
-      "code": "en-NL",
-      "name": "This Water Bucket Clutch is INSANE",
-      "file": "This Water Bucket Clutch is INSANE.mp4",
-      "automatic": false
-    }
+    {"code": "en-NL", "name": "This Water Bucket Clutch is INSANE", "file": "This Water Bucket Clutch is INSANE.mp4", "automatic": false}
   ]
 }
