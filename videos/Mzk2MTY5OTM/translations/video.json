@@ -1,5 +1,13 @@
 {
   "dubbing": [
-    {"code": "en-NL", "name": "This Water Bucket Clutch is INSANE", "file": "This Water Bucket Clutch is INSANE.mp4", "automatic": false}
+    {"code": "en-NL", "name": "This Water Bucket Clutch is INSANE", "file": "This Water Bucket Clutch is INSANE.mp4", "automatic": false},
+    {"code": "af-ZA", "name": "Hierdie Water Emmer Koppelaar is Kranksinnig", "file": "output_dubbed_af.mp4", "automatic": true},
+    {"code": "es-419", "name": "Este embrague para cubos de agua es una locura", "file": "output_dubbed_es.mp4", "automatic": true},
+    {"code": "pt-BR", "name": "Essa embreagem de balde d'água é INSANA", "file": "output_dubbed_pt.mp4", "automatic": true},
+    {"code": "nl-NL", "name": "Deze wateremmerkoppeling is waanzinnig", "file": "output_dubbed_nl.mp4", "automatic": true},
+    {"code": "tr-TR", "name": "Bu Su Kovası Debriyajı İnanılmaz", "file": "output_dubbed_tr.mp4", "automatic": true},
+    {"code": "ru-RU", "name": "Этот клатч в виде ведра с водой — просто невероятный", "file": "output_dubbed_ru.mp4", "automatic": true},
+    {"code": "ar-EG", "name": "هذا القابض على شكل دلو ماء جنوني", "file": "output_dubbed_ar.mp4", "automatic": true},
+    {"code": "fa-AF", "name": "این کلاچ سطل آب دیوانه کننده است", "file": "output_dubbed_fa.mp4", "automatic": true}
   ]
 }
