@@ -220,14 +220,14 @@
 <body>
  <div id="video-app">
     <div class="control-row">
-        <label>Load Video ID:</label>
+        <label id="lbl-load-id">Load Video ID:</label>
         <div class="input-group">
             <input type="text" id="video-id-input" placeholder="Enter video ID...">
             <button id="load-video-btn">Load</button>
         </div>
     </div>
     <div class="control-row">
-        <label>Choose a language:</label>
+        <label id="lbl-choose-lang">Choose a language:</label>
         <div class="dropdown-container" id="custom-language-dropdown">
             <div class="dropdown-selected" id="dropdown-trigger">Select a video first...</div>
             <div class="dropdown-options" id="dropdown-menu"></div>
@@ -245,9 +245,9 @@
             </div>
         </div>
         <div class="sidebar-section">
-            <h3>Other Videos</h3>
+            <h3 id="lbl-other-videos">Other Videos</h3>
             <div id="sidebar-video-list">
-                <div class="sidebar-status">Loading server repository...</div>
+                <div class="sidebar-status" id="sidebar-loading-status">Loading server repository...</div>
             </div>
         </div>
     </div>
@@ -264,8 +264,89 @@ document.addEventListener("DOMContentLoaded", () => {
     const descContent = document.getElementById('desc-content');
     const sidebarList = document.getElementById('sidebar-video-list');
 
-    // CONFIGURABLE PREFERRED LOCALE (Change this string as needed, e.g., "nl", "es", "en-US")
-    let targetLocale = "en"; 
+    // UI Translation Dictionary
+    const translations = {
+        'en': {
+            loadId: 'Load Video ID:',
+            enterIdPlaceholder: 'Enter video ID...',
+            loadBtn: 'Load',
+            chooseLang: 'Choose a language:',
+            selectFirst: 'Select a video first...',
+            description: 'Description',
+            otherVideos: 'Other Videos',
+            loadingServer: 'Loading server repository...',
+            noVideos: 'No uploaded video folders found. Enter ID above.'
+        },
+        'nl': {
+            loadId: 'Video-ID laden:',
+            enterIdPlaceholder: 'Voer video-ID in...',
+            loadBtn: 'Laden',
+            chooseLang: 'Kies een taal:',
+            selectFirst: 'Selecteer eerst een video...',
+            description: 'Beschrijving',
+            otherVideos: 'Andere video\'s',
+            loadingServer: 'Serverrepository laden...',
+            noVideos: 'Geen videowebmap gevonden. Voer hierboven een ID in.'
+        },
+        'fr': {
+            loadId: 'Charger l\'ID de la vidéo :',
+            enterIdPlaceholder: 'Entrez l\'ID de la vidéo...',
+            loadBtn: 'Charger',
+            chooseLang: 'Choisissez une langue :',
+            selectFirst: 'Sélectionnez d\'abord une vidéo...',
+            description: 'Description',
+            otherVideos: 'Autres vidéos',
+            loadingServer: 'Chargement du dépôt du serveur...',
+            noVideos: 'Aucun dossier trouvé. Entrez l\'ID ci-dessus.'
+        },
+        'de': {
+            loadId: 'Video-ID laden:',
+            enterIdPlaceholder: 'Video-ID eingeben...',
+            loadBtn: 'Laden',
+            chooseLang: 'Sprache wählen:',
+            selectFirst: 'Wählen Sie zuerst ein Video aus...',
+            description: 'Beschreibung',
+            otherVideos: 'Andere Videos',
+            loadingServer: 'Server-Repository wird geladen...',
+            noVideos: 'Keine Ordner gefunden. ID oben eingeben.'
+        },
+        'es': {
+            loadId: 'Cargar ID de video:',
+            enterIdPlaceholder: 'Ingrese ID de video...',
+            loadBtn: 'Cargar',
+            chooseLang: 'Elije un idioma:',
+            selectFirst: 'Selecciona un video primero...',
+            description: 'Descripción',
+            otherVideos: 'Otros videos',
+            loadingServer: 'Cargando repositorio...',
+            noVideos: 'No se encontraron carpetas. Ingrese el ID arriba.'
+        }
+    };
+
+    // Read locale from URL parameters or fall back to system/browser language
+    const urlParams = new URLSearchParams(window.location.search);
+    let targetLocale = urlParams.get('locale');
+
+    if (!targetLocale) {
+        targetLocale = navigator.language || (navigator.languages && navigator.languages[0]) || 'en';
+        urlParams.set('locale', targetLocale);
+        const newUrl = window.location.pathname + '?' + urlParams.toString() + window.location.hash;
+        history.replaceState(null, '', newUrl);
+    }
+
+    // Select translation dictionary based on base language code (e.g. 'nl-NL' -> 'nl')
+    const baseLang = targetLocale.split('-')[0].toLowerCase();
+    const t = translations[baseLang] || translations['en'];
+
+    // Apply translations to UI elements
+    document.getElementById('lbl-load-id').textContent = t.loadId;
+    videoIdInput.placeholder = t.enterIdPlaceholder;
+    loadVideoBtn.textContent = t.loadBtn;
+    document.getElementById('lbl-choose-lang').textContent = t.chooseLang;
+    dropdownTrigger.textContent = t.selectFirst;
+    document.getElementById('desc-title').textContent = t.description;
+    document.getElementById('lbl-other-videos').textContent = t.otherVideos;
+    document.getElementById('sidebar-loading-status').textContent = t.loadingServer;
 
     let tracksArray = [];
     let activeSelectedCode = "";
@@ -275,27 +356,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const repo = "SOVPAVU";
     const branch = "main";
 
-    // Helper function to find track by locale, falling back to the original language track
     function getBestTrackForLocale(tracks, desiredLocale) {
         if (!tracks || tracks.length === 0) return null;
-        
-        // Identify the original (non-automatic) track as the primary fallback
         const originalTrack = tracks.find(item => !item.automatic) || tracks[0];
-        
         if (!desiredLocale) return originalTrack;
 
         const cleanDesired = desiredLocale.toLowerCase();
         const baseDesired = cleanDesired.split('-')[0];
 
-        // 1. Try exact match (e.g., "nl-NL" === "nl-NL")
         let matched = tracks.find(t => t.code.toLowerCase() === cleanDesired);
         if (matched) return matched;
 
-        // 2. Try base language match (e.g., "nl" matches "nl-NL" or vice-versa)
         matched = tracks.find(t => t.code.toLowerCase().split('-')[0] === baseDesired);
         if (matched) return matched;
 
-        // 3. Fallback to original language if locale is unavailable
         return originalTrack;
     }
 
@@ -388,7 +462,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             autoOptions.forEach(opt => dropdownMenu.appendChild(opt));
 
-            // Select track based on targetLocale, falling back to original language automatically
             const bestTrack = getBestTrackForLocale(tracksArray, targetLocale);
             if (bestTrack) {
                 const matchedNode = Array.from(dropdownMenu.querySelectorAll('.dropdown-item')).find(el => el.dataset.value === bestTrack.code);
@@ -415,8 +488,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     async function loadServerVideosSidebar() {
-        sidebarList.innerHTML = '<div class="sidebar-status">Loading server repository...</div>';
-
         const token = localStorage.getItem('saved_github_token') || "";
         const headers = token ? { "Authorization": `token ${token}` } : {};
 
@@ -433,7 +504,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const directories = contents.filter(item => item.type === "dir");
 
             if (directories.length === 0) {
-                sidebarList.innerHTML = '<div class="sidebar-status">No folders found. Enter ID above.</div>';
+                sidebarList.innerHTML = `<div class="sidebar-status">${t.noVideos}</div>`;
                 return;
             }
 
@@ -470,11 +541,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             if (sidebarList.children.length === 0) {
-                sidebarList.innerHTML = '<div class="sidebar-status">No valid videos found. Enter ID above.</div>';
+                sidebarList.innerHTML = `<div class="sidebar-status">${t.noVideos}</div>`;
             }
 
         } catch (err) {
-            sidebarList.innerHTML = `<div class="sidebar-status">Repo fetch blocked/failed. Enter Video ID directly above.</div>`;
+            sidebarList.innerHTML = `<div class="sidebar-status">${t.noVideos}</div>`;
         }
     }
 
